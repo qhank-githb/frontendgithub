@@ -39,7 +39,7 @@
         />
       </el-form-item>
 
-      <!-- 上传按钮 -->
+      <!-- 上传按钮
       <el-form-item>
         <el-upload
           :action="uploadAction"
@@ -52,6 +52,27 @@
           <el-button type="primary" :loading="uploadLoading">
             选择并上传文件
           </el-button>
+        </el-upload>
+      </el-form-item> -->
+
+      <!--拖拽上传-->
+      <br />
+      <el-form-item class="upload-form-item">
+        <el-upload
+          drag
+          class="my-upload-area"
+          :action="uploadAction"
+          :data="{ username }"
+          :on-success="handleUploadSuccess"
+          :on-error="handleUploadError"
+          :before-upload="beforeUpload"
+          :show-file-list="false"
+        >
+          <div class="el-upload__text">
+            将文件拖到此处，或 <em>点击上传</em>
+            <br />
+            上传文件大小不可超过 500MB
+          </div>
         </el-upload>
       </el-form-item>
     </el-form>
@@ -121,7 +142,7 @@
   </el-card>
 </template>
 
-<script setup>
+<script setup lang="js">
 import { ref, computed, onMounted } from "vue";
 import axios from "axios";
 import { ElMessage } from "element-plus";
@@ -292,5 +313,22 @@ function joinUrl(...parts) {
 }
 .mt-2 {
   margin-top: 16px;
+}
+.upload-form-item {
+  width: 100%;
+}
+.my-upload-area {
+  /* 控制外层包装器的尺寸 */
+  width: 100%;
+  height: 170px;
+}
+
+.my-upload-area .el-upload-dragger {
+  /* 控制拖拽框内实际可用区域 */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 </style>
