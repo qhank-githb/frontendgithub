@@ -91,6 +91,18 @@
           >查询</el-button
         >
       </el-form-item>
+
+      <el-form-item>
+        <!-- selectedIds.length为 0 时，禁用按钮 -->
+        <el-button
+          type="success"
+          class="mt-2"
+          :disabled="selectedIds.length === 0"
+          @click="batchDownload"
+        >
+          批量下载选中文件
+        </el-button>
+      </el-form-item>
     </el-form>
 
     <el-table
@@ -115,16 +127,6 @@
         </template>
       </el-table-column>
     </el-table>
-
-    <!-- selectedIds.length为 0 时，禁用按钮 -->
-    <el-button
-      type="success"
-      class="mt-2"
-      :disabled="selectedIds.length === 0"
-      @click="batchDownload"
-    >
-      批量下载选中文件
-    </el-button>
   </el-card>
 </template>
 
@@ -292,9 +294,7 @@ function joinUrl(...parts) {
 .mb-3 {
   margin-bottom: 16px;
 }
-.mt-2 {
-  margin-top: 16px;
-}
+
 .upload-form-item {
   width: 100%;
 }
