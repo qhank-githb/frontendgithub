@@ -2,6 +2,7 @@
   <el-card>
     <h2>文件上传</h2>
 
+    <!--inline:横向排布-->
     <el-form :inline="true" class="mb-3">
       <!-- 用户名 -->
       <el-form-item label="用户名">
@@ -39,22 +40,6 @@
         />
       </el-form-item>
 
-      <!-- 上传按钮
-      <el-form-item>
-        <el-upload
-          :action="uploadAction"
-          :data="{ username }"
-          :on-success="handleUploadSuccess"
-          :on-error="handleUploadError"
-          :before-upload="beforeUpload"
-          :show-file-list="false"
-        >
-          <el-button type="primary" :loading="uploadLoading">
-            选择并上传文件
-          </el-button>
-        </el-upload>
-      </el-form-item> -->
-
       <!--拖拽上传-->
       <br />
       <el-form-item class="upload-form-item">
@@ -90,8 +75,8 @@
     <el-divider />
 
     <!-- 查询功能 -->
-    <h2>文件查询</h2>
-    <el-form :inline="true" class="mb-3" @submit.prevent>
+    <h2>文件查询与下载</h2>
+    <el-form :inline="true" class="mb-3">
       <el-form-item label="上传者">
         <el-input v-model="query.uploader" />
       </el-form-item>
@@ -131,6 +116,7 @@
       </el-table-column>
     </el-table>
 
+    <!-- selectedIds.length为 0 时，禁用按钮 -->
     <el-button
       type="success"
       class="mt-2"
@@ -236,11 +222,6 @@ function onSelectionChange(rows) {
   selectedIds.value = rows.map((r) => r.id);
 }
 
-const fileApiBase = computed(() => {
-  if (!actualBucket.value) return "";
-  // 拼成 "http://...:5000/api/BUCKET/file"
-  return joinUrl(apiBase, actualBucket.value, "file");
-});
 
 // 页面加载时获取桶列表
 async function fetchBuckets() {
@@ -257,7 +238,7 @@ async function downloadById(id) {
     const url = joinUrl(apiBase, "file", "download-by-id");
     const res = await axios.get(url, {
       params: { id },
-      responseType: "blob",
+      responseType: "blob",   //使用blob类型下载二进制文件
     });
 
     // 从响应头获取文件名
@@ -270,26 +251,26 @@ async function downloadById(id) {
       }
     }
 
-    const blob = new Blob([res.data]);
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    const blob = new Blob([res.data]);   //res.data本就是blob类型 为了兼容性重新创建blob对象
+    const link = document.createElement("a");  //标准的浏览器端“模拟点击下载”的做法。 创建<a>标签
+    link.href = URL.createObjectURL(blob);     //临时下载连接
+    link.download = filename;    // https://developer.mozilla.org/zh-CN/docs/Web/API/HTMLAnchorElement/download
+    link.click();                //模拟点击触发下载
+    URL.revokeObjectURL(link.href);     //释放内存
   } catch (error) {
     console.error(error);
     ElMessage.error("下载失败");
   }
 }
 
-// 如果批量下载也不需要桶名
+// 批量下载,与downloadById()类似
 async function batchDownload() {
   try {
     const url = joinUrl(apiBase, "file", "batch-download");
-    const res = await axios.post(url, selectedIds.value, {
+    const res = await axios.post(url, selectedIds.value, {     //使用POST上传selectedIds
       responseType: "blob",
     });
-    const blob = new Blob([res.data], { type: "application/zip" });
+    const blob = new Blob([res.data], { type: "application/zip" }); //指定下载zip
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `batch_${Date.now()}.zip`;
