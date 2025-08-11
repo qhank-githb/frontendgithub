@@ -82,46 +82,43 @@
 
     <!-- 查询功能 -->
     <h2>文件查询与下载</h2>
-    <el-form :inline="true" class="mb-3">
+    <el-form
+      :inline="true"
+      class="mb-3"
+      style="width: 100%; display: flex; flex-wrap: wrap; align-items: center"
+    >
+      <!-- 查询字段 -->
       <el-form-item label="上传者">
-        <el-input v-model="query.uploader" />
+        <el-input v-model="query.uploader" style="width: 200px" />
       </el-form-item>
       <el-form-item label="文件名">
-        <el-input v-model="query.fileName" />
+        <el-input v-model="query.fileName" style="width: 200px" />
       </el-form-item>
-      <el-form-item label="所在桶的名称">
-        <el-input v-model="query.bucket" />
+      <el-form-item label="所在桶">
+        <el-input v-model="query.bucket" style="width: 200px" />
       </el-form-item>
-      <el-form-item label="选择上传时间">
+      <el-form-item label="时间范围">
         <el-date-picker
           v-model="timeRange"
           type="datetimerange"
-          :shortcuts="shortcuts"
-          range-separator="到"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
+          style="width: 350px"
         />
       </el-form-item>
       <el-form-item label="ID">
-        <el-input v-model="query.id" />
+        <el-input v-model="query.id" style="width: 75px" />
       </el-form-item>
 
-      <el-form-item>
+      <!-- 按钮组，左边自动撑开，按钮贴右 -->
+      <el-form-item style="margin-left: auto; display: flex; gap: 10px">
         <el-button @click="fetchFileList" type="primary" :loading="queryloading"
           >查询</el-button
         >
-      </el-form-item>
-
-      <el-form-item>
-        <!-- selectedIds.length为 0 时，禁用按钮 -->
         <el-button
           type="success"
-          class="mt-2"
           :disabled="selectedIds.length === 0"
           @click="batchDownload"
+          >批量下载选中文件</el-button
         >
-          批量下载选中文件
-        </el-button>
       </el-form-item>
     </el-form>
 
