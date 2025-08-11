@@ -127,6 +127,19 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <div class="demo-pagination-block">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[100, 200, 300, 400]"
+        :background="true"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="totalCount"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
   </el-card>
 </template>
 
@@ -152,10 +165,17 @@ const actualBucket = computed(() => {
 const files = ref([]);
 const selectedIds = ref([]);
 const queryloading = ref(false);
+
+// ---------- 分页相关（新增） ----------
+const currentPage = ref(1);      // 当前页码（1-based）
+const pageSize = ref(100);       // 每页条数
+const totalCount = ref(0);       // 总记录数
+// -------------------------------------
+
 const query = ref({
   uploader: "",
   fileName: "",
-  bucket: "",
+  bucket: ""
 });
 
 const uploadAction = computed(
@@ -164,6 +184,7 @@ const uploadAction = computed(
 
 onMounted(() => {
   fetchBuckets();
+  fetchFileList(); // 初始加载第一页
 });
 
 // 互斥逻辑
@@ -204,17 +225,30 @@ function handleUploadError(err) {
   uploadLoading.value = false;
 }
 
-// 查询文件列表
+// 查询文件列表（带分页）
+// 注意：后端应返回 { Items: [...], TotalCount: N } 或 { items: [...], totalCount: N }
 async function fetchFileList() {
   queryloading.value = true;
-  const { uploader, fileName, bucket } = query.value;
-  const params = { uploader, fileName, bucket };
+  // 只改了这里：把分页参数加入 params（其它查询条件保持不变）
+  const params = {
+    uploader: query.value.uploader,
+    fileName: query.value.fileName,
+    bucket: query.value.bucket,
+    pageNumber: currentPage.value,
+    pageSize: pageSize.value
+  };
 
   try {
     const res = await axios.get(`${apiBase}/filequery/query`, { params });
-    files.value = res.data;
+
+    // 兼容大小写两种命名：Items / items
+    const data = res.data || {};
+    files.value = data.Items ?? data.items ?? [];
+    // total 优先取返回值，否则回退为当前页长度（以免为 undefined）
+    totalCount.value = (data.TotalCount ?? data.totalCount) ?? files.value.length;
   } catch (error) {
     ElMessage.error("查询文件列表失败");
+    console.error("查询错误:", error);
   } finally {
     queryloading.value = false;
   }
@@ -223,7 +257,6 @@ async function fetchFileList() {
 function onSelectionChange(rows) {
   selectedIds.value = rows.map((r) => r.id);
 }
-
 
 // 页面加载时获取桶列表
 async function fetchBuckets() {
@@ -288,6 +321,18 @@ async function batchDownload() {
 function joinUrl(...parts) {
   return parts.map((p) => p.replace(/^\/+|\/+$/g, "")).join("/");
 }
+
+// ---------- 分页事件处理（只改了这里） ----------
+const handleSizeChange = (val) => {
+  pageSize.value = val;
+  currentPage.value = 1; // 修改每页大小后回到第一页
+  fetchFileList();
+};
+const handleCurrentChange = (val) => {
+  currentPage.value = val;
+  fetchFileList();
+};
+// -----------------------------------------------
 </script>
 
 <style scoped>
@@ -311,5 +356,10 @@ function joinUrl(...parts) {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+}
+
+.demo-pagination-block {
+  margin-top: 20px;
+  text-align: right;
 }
 </style>
