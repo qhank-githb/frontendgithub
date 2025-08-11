@@ -70,7 +70,6 @@
       <el-table-column prop="size" label="文件大小" />
       <el-table-column prop="bucket" label="所在Bucket名称" />
       <el-table-column prop="eTag" label="ETag" />
-      <el-table-column prop="storedfilename" label="存储文件名" />
     </el-table>
 
     <el-divider />
