@@ -52,6 +52,7 @@
           :on-error="handleUploadError"
           :before-upload="beforeUpload"
           :show-file-list="false"
+          :multiple="true"
         >
           <div class="el-upload__text">
             将文件拖到此处，或 <em>点击上传</em>
