@@ -258,8 +258,8 @@ async function fetchFileList() {
     bucket: query.value.bucket,
     pageNumber: currentPage.value,
     pageSize: pageSize.value,
-    startTime: timeRange.value[0] ? timeRange.value[0].toISOString() : null,
-    endTime: timeRange.value[1] ? timeRange.value[1].toISOString() : null,
+    start: timeRange.value[0] ? timeRange.value[0].toISOString() : null,
+    end: timeRange.value[1] ? timeRange.value[1].toISOString() : null,
   };
 
   try {
