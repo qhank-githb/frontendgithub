@@ -102,6 +102,9 @@
           end-placeholder="结束时间"
         />
       </el-form-item>
+      <el-form-item label="ID">
+        <el-input v-model="query.id" />
+      </el-form-item>
 
       <el-form-item>
         <el-button @click="fetchFileList" type="primary" :loading="queryloading"
@@ -194,6 +197,7 @@ const query = ref({
   uploader: "",
   fileName: "",
   bucket: "",
+  id:""
 });
 
 const uploadAction = computed(
@@ -260,6 +264,7 @@ async function fetchFileList() {
     pageSize: pageSize.value,
     start: timeRange.value[0] ? timeRange.value[0].toISOString() : null,
     end: timeRange.value[1] ? timeRange.value[1].toISOString() : null,
+    id:query.value.id
   };
 
   try {
