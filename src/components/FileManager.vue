@@ -359,7 +359,8 @@ const handleCurrentChange = (val) => {
 }
 
 .demo-pagination-block {
-  margin-top: 20px;
-  text-align: right;
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
 }
 </style>
