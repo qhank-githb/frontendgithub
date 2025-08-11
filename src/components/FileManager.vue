@@ -209,10 +209,13 @@ function beforeUpload(file) {
   return true;
 }
 
+
+
 // 上传成功
 function handleUploadSuccess(res) {
   uploadResults.value.unshift(res);
   ElMessage.success("上传成功");
+   if (this.uploadResults.length > 10) uploadResults.value.pop();
   uploadLoading.value = false;
   newBucket.value = "";
   fetchBuckets();
@@ -224,6 +227,7 @@ function handleUploadError(err) {
   ElMessage.error("上传失败，请重试");
   uploadLoading.value = false;
 }
+
 
 // 查询文件列表（带分页）
 // 注意：后端应返回 { Items: [...], TotalCount: N } 或 { items: [...], totalCount: N }
