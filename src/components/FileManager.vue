@@ -92,6 +92,17 @@
       <el-form-item label="所在桶的名称">
         <el-input v-model="query.bucket" />
       </el-form-item>
+      <el-form-item label="选择上传时间">
+        <el-date-picker
+          v-model="timeRange"
+          type="datetimerange"
+          :shortcuts="shortcuts"
+          range-separator="到"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+        />
+      </el-form-item>
+
       <el-form-item>
         <el-button @click="fetchFileList" type="primary" :loading="queryloading"
           >查询</el-button
@@ -159,6 +170,7 @@ const apiBase = "http://192.168.150.93:5000/api";
 const username = ref("bolo-vue-test");
 const uploadLoading = ref(false);
 const uploadResults = ref([]);
+const timeRange = ref([])
 
 const bucketOptions = ref([]);
 const selectedBucket = ref(""); // 已有桶名选择
@@ -181,7 +193,7 @@ const totalCount = ref(0);       // 总记录数
 const query = ref({
   uploader: "",
   fileName: "",
-  bucket: ""
+  bucket: "",
 });
 
 const uploadAction = computed(
@@ -245,7 +257,9 @@ async function fetchFileList() {
     fileName: query.value.fileName,
     bucket: query.value.bucket,
     pageNumber: currentPage.value,
-    pageSize: pageSize.value
+    pageSize: pageSize.value,
+    startTime: timeRange.value[0] ? timeRange.value[0].toISOString() : null,
+    endTime: timeRange.value[1] ? timeRange.value[1].toISOString() : null,
   };
 
   try {
