@@ -64,11 +64,17 @@
     </el-form>
 
     <!-- 上传结果 -->
-    <h3>上传结果</h3>
+    <div
+      style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px"
+    >
+      <h3 style="margin: 0">上传结果</h3>
+      <small style="color: #888">最多显示10个上传结果</small>
+    </div>
+
     <el-table :data="uploadResults" style="width: 100%" border>
       <el-table-column prop="originalFileName" label="文件名" />
       <el-table-column prop="size" label="文件大小" />
-      <el-table-column prop="bucket" label="所在Bucket名称" />
+      <el-table-column prop="bucket" label="所在桶的名称" />
       <el-table-column prop="eTag" label="ETag" />
     </el-table>
 
@@ -83,7 +89,7 @@
       <el-form-item label="文件名">
         <el-input v-model="query.fileName" />
       </el-form-item>
-      <el-form-item label="Bucket">
+      <el-form-item label="所在桶的名称">
         <el-input v-model="query.bucket" />
       </el-form-item>
       <el-form-item>
@@ -115,7 +121,7 @@
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="originalFileName" label="文件名" />
       <el-table-column prop="fileSize" label="文件大小" />
-      <el-table-column prop="bucketname" label="所在Bucket名称" />
+      <el-table-column prop="bucketname" label="所在桶的名称" />
       <el-table-column prop="uploader" label="上传者" />
       <el-table-column prop="uploadTime" label="上传时间" />
       <el-table-column prop="eTag" label="ETag" />
