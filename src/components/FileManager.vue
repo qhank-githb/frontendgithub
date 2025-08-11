@@ -215,7 +215,7 @@ function beforeUpload(file) {
 function handleUploadSuccess(res) {
   uploadResults.value.unshift(res);
   ElMessage.success("上传成功");
-   if (this.uploadResults.length > 10) uploadResults.value.pop();
+   if (uploadResults.value.length > 10) uploadResults.value.pop();
   uploadLoading.value = false;
   newBucket.value = "";
   fetchBuckets();
