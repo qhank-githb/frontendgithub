@@ -132,7 +132,7 @@
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
-        :page-sizes="[100, 200, 300, 400]"
+        :page-sizes="[25, 50, 100]"
         :background="true"
         layout="total, sizes, prev, pager, next, jumper"
         :total="totalCount"
@@ -168,7 +168,7 @@ const queryloading = ref(false);
 
 // ---------- 分页相关（新增） ----------
 const currentPage = ref(1);      // 当前页码（1-based）
-const pageSize = ref(100);       // 每页条数
+const pageSize = ref(25);       // 每页条数
 const totalCount = ref(0);       // 总记录数
 // -------------------------------------
 
