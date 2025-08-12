@@ -108,7 +108,7 @@
           type="success"
           :disabled="selectedIds.length === 0"
           @click="batchDownload"
-          >批量下载选中文件</el-button
+          >批量下载选中文件 已选中{{ selectedIds.length }}个</el-button
         >
       </el-form-item>
     </el-form>
