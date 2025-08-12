@@ -2,9 +2,7 @@
   <el-card>
     <h2>文件上传</h2>
 
-    <!--inline:横向排布-->
     <el-form :inline="true" class="mb-3">
-      <!-- 用户名 -->
       <el-form-item label="用户名">
         <el-input
           v-model="username"
@@ -13,7 +11,6 @@
         />
       </el-form-item>
 
-      <!-- 选择已有桶 -->
       <el-form-item label="选择已有桶">
         <el-select
           v-model="selectedBucket"
@@ -30,7 +27,6 @@
         </el-select>
       </el-form-item>
 
-      <!-- 新建桶名 -->
       <el-form-item label="新建桶名">
         <el-input
           v-model="newBucket"
@@ -40,7 +36,6 @@
         />
       </el-form-item>
 
-      <!--拖拽上传-->
       <br />
       <el-form-item class="upload-form-item">
         <el-upload
@@ -63,7 +58,6 @@
       </el-form-item>
     </el-form>
 
-    <!-- 上传结果 -->
     <div
       style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px"
     >
@@ -80,14 +74,12 @@
 
     <el-divider />
 
-    <!-- 查询功能 -->
     <h2>文件查询与下载</h2>
     <el-form
       :inline="true"
       class="mb-3"
       style="width: 100%; display: flex; flex-wrap: wrap; align-items: center"
     >
-      <!-- 查询字段 -->
       <el-form-item label="上传者">
         <el-input v-model="query.uploader" style="width: 200px" />
       </el-form-item>
@@ -108,7 +100,6 @@
         <el-input v-model="query.id" style="width: 75px" />
       </el-form-item>
 
-      <!-- 按钮组，左边自动撑开，按钮贴右 -->
       <el-form-item style="margin-left: auto; display: flex; gap: 10px">
         <el-button @click="fetchFileList" type="primary" :loading="queryloading"
           >查询</el-button
@@ -163,7 +154,7 @@
 </template>
 
 <script setup lang="js">
-import { ref, computed, onMounted,reactive,nextTick} from "vue";
+import { ref, computed, onMounted, reactive, nextTick } from "vue";
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
@@ -172,34 +163,32 @@ const apiBase = "http://192.168.150.93:5000/api";
 const username = ref("bolo-vue-test");
 const uploadLoading = ref(false);
 const uploadResults = ref([]);
-const timeRange = ref([])
+const timeRange = ref([]);
 
+// 跨页保存选中项：key=id, value=row对象
+// 使用 reactive(new Map()) 是可以的，但注意 Map 的一些响应性限制（这里只用于存储/读取）
 const selectedRowsMap = reactive(new Map());
 const multipleTable = ref(null);
 
 const bucketOptions = ref([]);
-const selectedBucket = ref(""); // 已有桶名选择
-const newBucket = ref(""); // 新建桶名输入
+const selectedBucket = ref("");
+const newBucket = ref("");
 
-const actualBucket = computed(() => {
-  return newBucket.value.trim() || selectedBucket.value;
-});
+const actualBucket = computed(() => newBucket.value.trim() || selectedBucket.value);
 
 const files = ref([]);
-const selectedIds = ref([]);
+const selectedIds = ref([]); // 用于批量下载（存储所有页的选中 id）
 const queryloading = ref(false);
 
-// ---------- 分页相关（新增） ----------
-const currentPage = ref(1);      // 当前页码（1-based）
-const pageSize = ref(10);       // 每页条数
-const totalCount = ref(0);       // 总记录数
-// -------------------------------------
+const currentPage = ref(1);
+const pageSize = ref(10);
+const totalCount = ref(0);
 
 const query = ref({
   uploader: "",
   fileName: "",
   bucket: "",
-  id:""
+  id: ""
 });
 
 const uploadAction = computed(
@@ -208,10 +197,9 @@ const uploadAction = computed(
 
 onMounted(() => {
   fetchBuckets();
-  fetchFileList(); // 初始加载第一页
+  fetchFileList();
 });
 
-// 互斥逻辑
 function onBucketSelected(value) {
   newBucket.value = "";
 }
@@ -219,7 +207,6 @@ function onNewBucketInput(value) {
   selectedBucket.value = "";
 }
 
-// 上传验证
 function beforeUpload(file) {
   if (!username.value) {
     ElMessage.error("请先填写用户名");
@@ -233,31 +220,24 @@ function beforeUpload(file) {
   return true;
 }
 
-
-
-// 上传成功
 function handleUploadSuccess(res) {
   uploadResults.value.unshift(res);
   ElMessage.success("上传成功");
-   if (uploadResults.value.length > 10) uploadResults.value.pop();
+  if (uploadResults.value.length > 10) uploadResults.value.pop();
   uploadLoading.value = false;
   newBucket.value = "";
   fetchBuckets();
 }
 
-// 上传失败
 function handleUploadError(err) {
   console.error("上传失败", err);
   ElMessage.error("上传失败，请重试");
   uploadLoading.value = false;
 }
 
-
-// 查询文件列表（带分页）
-// 注意：后端应返回 { Items: [...], TotalCount: N } 或 { items: [...], totalCount: N }
+// ---------- fetchFileList（带分页） ----------
 async function fetchFileList() {
   queryloading.value = true;
-  // 只改了这里：把分页参数加入 params（其它查询条件保持不变）
   const params = {
     uploader: query.value.uploader,
     fileName: query.value.fileName,
@@ -266,24 +246,30 @@ async function fetchFileList() {
     pageSize: pageSize.value,
     start: timeRange.value[0] ? timeRange.value[0].toISOString() : null,
     end: timeRange.value[1] ? timeRange.value[1].toISOString() : null,
-    id:query.value.id
+    id: query.value.id
   };
 
   try {
     const res = await axios.get(`${apiBase}/filequery/query`, { params });
-
-    // 兼容大小写两种命名：Items / items
     const data = res.data || {};
     files.value = data.Items ?? data.items ?? [];
-    // total 优先取返回值，否则回退为当前页长度（以免为 undefined）
     totalCount.value = (data.TotalCount ?? data.totalCount) ?? files.value.length;
 
-        await nextTick();
+    // 等 DOM 更新后，恢复当前页中已选的行
+    await nextTick();
+
+    // 先清理当前表格的 selection（避免冲突）
+    if (multipleTable.value && typeof multipleTable.value.clearSelection === "function") {
+      multipleTable.value.clearSelection();
+    }
 
     files.value.forEach(row => {
+      if (!row || row.id === undefined || row.id === null) return;
       if (selectedRowsMap.has(row.id)) {
-        // 调用表格实例方法，勾选对应行
-        multipleTable.value.toggleRowSelection(row, true);
+        // 再次选中当前页里曾经选中的行
+        if (multipleTable.value && typeof multipleTable.value.toggleRowSelection === "function") {
+          multipleTable.value.toggleRowSelection(row, true);
+        }
       }
     });
   } catch (error) {
@@ -293,27 +279,33 @@ async function fetchFileList() {
     queryloading.value = false;
   }
 }
+// -------------------------------------------------
 
+// 修正后的 onSelectionChange：使用传入的 rows 参数（不要用未声明的变量）
 function onSelectionChange(rows) {
-  selectedIds.value = rows.map((r) => r.id);
+  // rows 是当前页被勾选的行数组
+  const currentIds = rows.map(r => r.id);
+
   // 1）把当前页选中的都加入 Map
   rows.forEach(item => {
-    selectedRowsMap.set(item.id, item);
+    if (item && item.id !== undefined && item.id !== null) {
+      selectedRowsMap.set(item.id, item);
+    }
   });
 
-  // 2）把当前页未选中的，从 Map 里删掉
-  // 遍历所有之前选中过的key，如果它在当前页数据里，但没被选中，则删除
+  // 2）把当前页未选中的，从 Map 里删掉（只删除当前页的未选中项）
   files.value.forEach(row => {
+    if (!row || row.id === undefined || row.id === null) return;
     if (!currentIds.includes(row.id)) {
       selectedRowsMap.delete(row.id);
     }
   });
 
-  // 3）更新selectedIds（批量下载用的）
+  // 3）更新 selectedIds（用于批量下载）
   selectedIds.value = Array.from(selectedRowsMap.keys());
 }
 
-// 页面加载时获取桶列表
+// ---------- 其它方法（下载、批量下载等） ----------
 async function fetchBuckets() {
   try {
     const res = await axios.get(`${apiBase}/buckets`);
@@ -328,10 +320,9 @@ async function downloadById(id) {
     const url = joinUrl(apiBase, "file", "download-by-id");
     const res = await axios.get(url, {
       params: { id },
-      responseType: "blob",   //使用blob类型下载二进制文件
+      responseType: "blob",
     });
 
-    // 从响应头获取文件名
     const disposition = res.headers["content-disposition"];
     let filename = `file_${id}`;
     if (disposition) {
@@ -341,26 +332,29 @@ async function downloadById(id) {
       }
     }
 
-    const blob = new Blob([res.data]);   //res.data本就是blob类型 为了兼容性重新创建blob对象
-    const link = document.createElement("a");  //标准的浏览器端“模拟点击下载”的做法。 创建<a>标签
-    link.href = URL.createObjectURL(blob);     //临时下载连接
-    link.download = filename;    // https://developer.mozilla.org/zh-CN/docs/Web/API/HTMLAnchorElement/download
-    link.click();                //模拟点击触发下载
-    URL.revokeObjectURL(link.href);     //释放内存
+    const blob = new Blob([res.data]);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
   } catch (error) {
     console.error(error);
     ElMessage.error("下载失败");
   }
 }
 
-// 批量下载,与downloadById()类似
 async function batchDownload() {
   try {
+    if (selectedIds.value.length === 0) {
+      ElMessage.warning("请先选择要下载的文件");
+      return;
+    }
     const url = joinUrl(apiBase, "file", "batch-download");
-    const res = await axios.post(url, selectedIds.value, {     //使用POST上传selectedIds
+    const res = await axios.post(url, selectedIds.value, {
       responseType: "blob",
     });
-    const blob = new Blob([res.data], { type: "application/zip" }); //指定下载zip
+    const blob = new Blob([res.data], { type: "application/zip" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `batch_${Date.now()}.zip`;
@@ -372,22 +366,19 @@ async function batchDownload() {
   }
 }
 
-//统一清理 URL 拼接
 function joinUrl(...parts) {
   return parts.map((p) => p.replace(/^\/+|\/+$/g, "")).join("/");
 }
 
-// ---------- 分页事件处理（只改了这里） ----------
 const handleSizeChange = (val) => {
   pageSize.value = val;
-  currentPage.value = 1; // 修改每页大小后回到第一页
+  currentPage.value = 1;
   fetchFileList();
 };
 const handleCurrentChange = (val) => {
   currentPage.value = val;
   fetchFileList();
 };
-// -----------------------------------------------
 </script>
 
 <style scoped>
@@ -399,13 +390,11 @@ const handleCurrentChange = (val) => {
   width: 100%;
 }
 .my-upload-area {
-  /* 控制外层包装器的尺寸 */
   width: 100%;
   height: 170px;
 }
 
 .my-upload-area .el-upload-dragger {
-  /* 控制拖拽框内实际可用区域 */
   height: 100%;
   display: flex;
   flex-direction: column;
