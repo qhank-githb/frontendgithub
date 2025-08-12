@@ -125,6 +125,8 @@
     <el-table
       :data="files"
       style="width: 100%"
+      ref="multipleTable"
+      :row-key="(row) => row.id"
       @selection-change="onSelectionChange"
       border
     >
@@ -161,7 +163,7 @@
 </template>
 
 <script setup lang="js">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted,reactive,nextTick} from "vue";
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
@@ -171,6 +173,9 @@ const username = ref("bolo-vue-test");
 const uploadLoading = ref(false);
 const uploadResults = ref([]);
 const timeRange = ref([])
+
+const selectedRowsMap = reactive(new Map());
+const multipleTable = ref(null);
 
 const bucketOptions = ref([]);
 const selectedBucket = ref(""); // 已有桶名选择
@@ -272,6 +277,15 @@ async function fetchFileList() {
     files.value = data.Items ?? data.items ?? [];
     // total 优先取返回值，否则回退为当前页长度（以免为 undefined）
     totalCount.value = (data.TotalCount ?? data.totalCount) ?? files.value.length;
+
+        await nextTick();
+
+    files.value.forEach(row => {
+      if (selectedRowsMap.has(row.id)) {
+        // 调用表格实例方法，勾选对应行
+        multipleTable.value.toggleRowSelection(row, true);
+      }
+    });
   } catch (error) {
     ElMessage.error("查询文件列表失败");
     console.error("查询错误:", error);
@@ -282,6 +296,21 @@ async function fetchFileList() {
 
 function onSelectionChange(rows) {
   selectedIds.value = rows.map((r) => r.id);
+  // 1）把当前页选中的都加入 Map
+  currentSelection.forEach(item => {
+    selectedRowsMap.set(item.id, item);
+  });
+
+  // 2）把当前页未选中的，从 Map 里删掉
+  // 遍历所有之前选中过的key，如果它在当前页数据里，但没被选中，则删除
+  files.value.forEach(row => {
+    if (!currentIds.includes(row.id)) {
+      selectedRowsMap.delete(row.id);
+    }
+  });
+
+  // 3）更新selectedIds（批量下载用的）
+  selectedIds.value = Array.from(selectedRowsMap.keys());
 }
 
 // 页面加载时获取桶列表
