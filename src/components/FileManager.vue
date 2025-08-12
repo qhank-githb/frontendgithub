@@ -31,10 +31,17 @@
         <el-input
           v-model="newBucket"
           placeholder="输入新桶名"
-          style="width: 200px"
+          style="width: 200px; margin-right: 260px"
           @input="onNewBucketInput"
         />
       </el-form-item>
+
+      <el-form-item
+        ><el-progress
+          :percentage="uploadPercent"
+          style="width: 250px"
+          v-if="showProgress"
+      /></el-form-item>
 
       <br />
       <el-form-item class="upload-form-item">
@@ -48,6 +55,7 @@
           :before-upload="beforeUpload"
           :show-file-list="false"
           :multiple="true"
+          :on-progress="handleUploadProgress"
         >
           <div class="el-upload__text">
             将文件拖到此处，或 <em>点击上传</em>
@@ -180,6 +188,9 @@ const files = ref([]);
 const selectedIds = ref([]); // 用于批量下载（存储所有页的选中 id）
 const queryloading = ref(false);
 
+const uploadPercent = ref(0)
+const showProgress = ref(false)
+
 const currentPage = ref(1);
 const pageSize = ref(10);
 const totalCount = ref(0);
@@ -208,32 +219,44 @@ function onNewBucketInput(value) {
 }
 
 function beforeUpload(file) {
-  if (!username.value) {
-    ElMessage.error("请先填写用户名");
-    return false;
-  }
-  if (!actualBucket.value) {
-    ElMessage.error("请选择或输入桶名");
-    return false;
-  }
+  if (!username.value) { ElMessage.error("请先填写用户名"); return false; }
+  if (!actualBucket.value) { ElMessage.error("请选择或输入桶名"); return false; }
+  if (file.size / 1024 / 1024 > 500) { ElMessage.error("文件大小不能超过 500MB"); return false; }
+
   uploadLoading.value = true;
+  showProgress.value = true;
+  uploadPercent.value = 0; // 重置
   return true;
 }
 
+function handleUploadProgress(event, file, fileList) {
+  if (!event || !event.lengthComputable) return;
+  const percent = Math.round((event.loaded / event.total) * 100);
+
+  // 不要直接到 100%，卡在 99%，等后端成功回调再设置 100
+  uploadPercent.value = percent >= 100 ? 99 : percent;
+}
+
 function handleUploadSuccess(res) {
+  // 服务器确认完成时再补到 100%
+  uploadPercent.value = 100;
   uploadResults.value.unshift(res);
-  ElMessage.success("上传成功");
   if (uploadResults.value.length > 10) uploadResults.value.pop();
   uploadLoading.value = false;
   newBucket.value = "";
   fetchBuckets();
+  ElMessage.success("上传成功");
+  setTimeout(() => { showProgress.value = false }, 800);
 }
 
 function handleUploadError(err) {
   console.error("上传失败", err);
   ElMessage.error("上传失败，请重试");
   uploadLoading.value = false;
+  showProgress.value = false;
+  uploadPercent.value = 0;
 }
+
 
 // ---------- fetchFileList（带分页） ----------
 async function fetchFileList() {
