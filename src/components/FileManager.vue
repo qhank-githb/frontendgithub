@@ -36,12 +36,13 @@
         />
       </el-form-item>
 
-      <el-form-item
-        ><el-progress
+      <el-form-item>
+        <el-progress
           :percentage="uploadPercent"
           style="width: 250px"
           v-if="showProgress"
-      /></el-form-item>
+        />
+      </el-form-item>
 
       <br />
       <el-form-item class="upload-form-item">
@@ -191,6 +192,13 @@ const queryloading = ref(false);
 const uploadPercent = ref(0)
 const showProgress = ref(false)
 
+// ---- 新增用于合并进度的状态 ----
+const batchTotalSize = ref(0); // 本次批量上传的总字节数
+const fileUploadedBytes = ref({}); // { uid: uploadedBytes }
+const batchTotalFiles = ref(0);
+const batchCompletedCount = ref(0);
+const batchInProgress = ref(false);
+
 const currentPage = ref(1);
 const pageSize = ref(10);
 const totalCount = ref(0);
@@ -218,43 +226,126 @@ function onNewBucketInput(value) {
   selectedBucket.value = "";
 }
 
-function beforeUpload(file) {
+function resetBatchStateAfterDelay() {
+  // 等 UI 动画显示 100% 后再重置数据
+  setTimeout(() => {
+    batchTotalSize.value = 0;
+    fileUploadedBytes.value = {};
+    batchTotalFiles.value = 0;
+    batchCompletedCount.value = 0;
+    batchInProgress.value = false;
+    uploadPercent.value = 0;
+    showProgress.value = false;
+  }, 600);
+}
+
+function beforeUpload(file, fileList) {
+  // 校验
   if (!username.value) { ElMessage.error("请先填写用户名"); return false; }
   if (!actualBucket.value) { ElMessage.error("请选择或输入桶名"); return false; }
   if (file.size / 1024 / 1024 > 500) { ElMessage.error("文件大小不能超过 500MB"); return false; }
 
+  // 如果当前不是批量上传中，先初始化批次状态（支持一次性选多个文件或逐个追加）
+  if (!batchInProgress.value) {
+    batchInProgress.value = true;
+    batchCompletedCount.value = 0;
+    fileUploadedBytes.value = {}; // 清空
+
+    if (fileList && fileList.length > 1) {
+      // 一次性选中多个文件 -> 用 fileList 初始化
+      batchTotalFiles.value = fileList.length;
+      batchTotalSize.value = fileList.reduce((s, f) => s + (f.size || 0), 0);
+      fileList.forEach(f => { fileUploadedBytes.value[f.uid] = 0; });
+    } else {
+      // 逐个追加文件的场景，先设为0，下面再按单文件累加
+      batchTotalFiles.value = 0;
+      batchTotalSize.value = 0;
+    }
+  }
+
+  // 无论是否已初始化，都确保当前 file 被计入（避免重复计入）
+  if (!fileUploadedBytes.value[file.uid]) {
+    fileUploadedBytes.value[file.uid] = 0;
+    batchTotalFiles.value = (batchTotalFiles.value || 0) + 1;
+    batchTotalSize.value = (batchTotalSize.value || 0) + (file.size || 0);
+  }
+
+  // debug
+  console.log('[beforeUpload] batchFiles=%d batchSize=%d bytes; uids=%o',
+    batchTotalFiles.value, batchTotalSize.value, Object.keys(fileUploadedBytes.value));
+
   uploadLoading.value = true;
   showProgress.value = true;
-  uploadPercent.value = 0; // 重置
+  uploadPercent.value = 0;
   return true;
 }
 
-function handleUploadProgress(event, file, fileList) {
+
+function handleUploadProgress(event, file) {
+  // debug
+  console.log('[progress] uid=', file.uid, 'loaded=', event.loaded, 'size=', file.size);
+
   if (!event || !event.lengthComputable) return;
-  const percent = Math.round((event.loaded / event.total) * 100);
+  const uid = file.uid;
+  // 更新当前文件已上传字节（不能超过文件实际大小）
+  fileUploadedBytes.value[uid] = Math.min(event.loaded, file.size || event.loaded);
 
-  // 不要直接到 100%，卡在 99%，等后端成功回调再设置 100
-  uploadPercent.value = percent >= 100 ? 99 : percent;
+  // 计算所有文件已上传总字节
+  const uploadedTotal = Object.values(fileUploadedBytes.value).reduce((s, v) => s + (v || 0), 0);
+
+  // 计算合并百分比（保留整数）
+  let percent = batchTotalSize.value > 0 ? (uploadedTotal / batchTotalSize.value) * 100 : 0;
+
+  // 卡在 99%，等待服务器处理完成才 100
+  uploadPercent.value = percent >= 100 ? 99 : Math.floor(percent);
+
+  // debug
+  console.log('[progress] uploadedTotal=', uploadedTotal, 'percent=', uploadPercent.value);
 }
 
-function handleUploadSuccess(res) {
-  // 服务器确认完成时再补到 100%
-  uploadPercent.value = 100;
-  uploadResults.value.unshift(res);
-  if (uploadResults.value.length > 10) uploadResults.value.pop();
-  uploadLoading.value = false;
-  newBucket.value = "";
-  fetchBuckets();
-  ElMessage.success("上传成功");
-  setTimeout(() => { showProgress.value = false }, 800);
+
+
+// 每个文件上传成功
+function handleUploadSuccess(res, file) {
+  console.log('[success] uid=', file.uid);
+  // 确保已记录该文件已满
+  fileUploadedBytes.value[file.uid] = file.size || fileUploadedBytes.value[file.uid] || 0;
+
+  batchCompletedCount.value++;
+
+  // 只有当本批次所有文件都完成才设为100
+  if (batchCompletedCount.value >= batchTotalFiles.value) {
+    uploadPercent.value = 100;
+    uploadResults.value.unshift(res);
+    if (uploadResults.value.length > 10) uploadResults.value.pop();
+    uploadLoading.value = false;
+    newBucket.value = "";
+    fetchBuckets();
+    ElMessage.success("上传成功");
+    resetBatchStateAfterDelay();
+  } else {
+    uploadResults.value.unshift(res);
+    if (uploadResults.value.length > 10) uploadResults.value.pop();
+  }
 }
 
-function handleUploadError(err) {
+
+function handleUploadError(err, file) {
   console.error("上传失败", err);
   ElMessage.error("上传失败，请重试");
-  uploadLoading.value = false;
-  showProgress.value = false;
-  uploadPercent.value = 0;
+  // 将该文件计为完成（避免阻塞整个批次）
+  batchCompletedCount.value++;
+  // 标记已上传字节为文件大小（防止总进度被卡住）
+  if (file && file.uid) fileUploadedBytes.value[file.uid] = file.size || fileUploadedBytes.value[file.uid] || 0;
+
+  // 如果所有文件都完成（成功或失败），结束批次并重置
+  if (batchCompletedCount.value >= batchTotalFiles.value) {
+    uploadPercent.value = 100;
+    uploadLoading.value = false;
+    resetBatchStateAfterDelay();
+  } else {
+    // 仍有剩余文件，保持当前进度（可能为 99）
+  }
 }
 
 
