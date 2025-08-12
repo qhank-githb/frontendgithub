@@ -297,7 +297,7 @@ async function fetchFileList() {
 function onSelectionChange(rows) {
   selectedIds.value = rows.map((r) => r.id);
   // 1）把当前页选中的都加入 Map
-  currentSelection.forEach(item => {
+  rows.forEach(item => {
     selectedRowsMap.set(item.id, item);
   });
 
