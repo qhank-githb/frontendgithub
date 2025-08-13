@@ -25,9 +25,16 @@
       /></el-form-item>
 
       <el-form-item style="margin-left: auto; display: flex; gap: 10px">
+        <el-button
+          type="info"
+          @click="clearAllSelection"
+          :disabled="selectedIds.length === 0"
+          >取消所有勾选</el-button
+        >
         <el-button @click="fetchFileList" type="primary" :loading="queryLoading"
           >查询</el-button
         >
+
         <el-button
           type="success"
           :disabled="selectedIds.length === 0"
@@ -74,6 +81,17 @@
         @current-change="handleCurrentChange"
       />
     </div>
+
+    <el-backtop
+      style="
+        background-color: #409eff; /* 蓝色背景 */
+        color: white; /* 让内部箭头继承白色 */
+        box-shadow: var(--el-box-shadow-lighter);
+        width: 50px;
+        height: 50px;
+        font-size: 32px;
+      "
+    />
   </div>
 </template>
 
@@ -191,6 +209,18 @@ function onSelectionChange(rows) {
     if (row?.id && !currentIds.includes(row.id)) selectedRowsMap.delete(row.id);
   });
   selectedIds.value = Array.from(selectedRowsMap.keys());
+}
+
+// 取消所有选中状态
+function clearAllSelection() {
+  if (
+    multipleTable.value &&
+    typeof multipleTable.value.clearSelection === "function"
+  ) {
+    multipleTable.value.clearSelection();
+    selectedRowsMap.clear();
+    selectedIds.value = [];
+  }
 }
 
 async function downloadById(id) {
