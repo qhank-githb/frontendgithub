@@ -224,6 +224,7 @@ function clearAllSelection() {
 }
 
 async function downloadById(id) {
+  const loading = ElLoading.service({ text: "正在下载..." });
   try {
     const res = await filesApi.downloadById(id);
     let filename = `file_${id}`;
@@ -240,6 +241,8 @@ async function downloadById(id) {
     URL.revokeObjectURL(a.href);
   } catch {
     ElMessage.error("下载失败");
+  } finally {
+    loading.close();
   }
 }
 
@@ -248,6 +251,7 @@ async function batchDownload() {
     ElMessage.warning("请先选择要下载的文件");
     return;
   }
+  const loading = ElLoading.service({ text: "正在下载..." });
   try {
     const res = await filesApi.batchDownload(selectedIds.value);
     const blob = new Blob([res.data], { type: "application/zip" });
@@ -258,6 +262,8 @@ async function batchDownload() {
     URL.revokeObjectURL(a.href);
   } catch {
     ElMessage.error("批量下载失败");
+  } finally {
+    loading.close();
   }
 }
 
