@@ -99,7 +99,7 @@
 import { ref, reactive, nextTick, watch } from "vue";
 import axios from "axios"; // 确保引入
 import * as filesApi from "@/api/files";
-import { ElMessage } from "element-plus";
+import { ElLoading, ElMessage } from "element-plus";
 
 const apiBase = "http://192.168.150.93:5000/api"; // 请根据实际改
 
