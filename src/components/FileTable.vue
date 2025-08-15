@@ -152,17 +152,6 @@ const isPageChanging = ref(false);
 async function fetchFileList() {
   queryLoading.value = true;
 
-  // 清空之前的选择
-  isRestoringSelection.value = true; // 避免触发 onSelectionChange 删除
-  selectedRowsMap.clear();
-  selectedIds.value = [];
-  if (
-    multipleTable.value &&
-    typeof multipleTable.value.clearSelection === "function"
-  ) {
-    multipleTable.value.clearSelection();
-  }
-  isRestoringSelection.value = false;
   try {
     // Construct safe params
     const params = {};
