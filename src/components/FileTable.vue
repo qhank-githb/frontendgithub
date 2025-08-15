@@ -25,8 +25,11 @@
       /></el-form-item>
 
       <el-form-item style="margin-left: auto; display: flex; gap: 10px">
+        <el-button type="primary" @click="SetAllSelection"
+          >勾选全部符合条件的 {{ totalCount }} 个对象</el-button
+        >
         <el-button
-          type="info"
+          type="warning"
           @click="clearAllSelection"
           :disabled="selectedIds.length === 0"
           >取消所有勾选</el-button
@@ -39,7 +42,7 @@
           type="success"
           :disabled="selectedIds.length === 0"
           @click="batchDownload"
-          >批量下载选中文件 已选中{{ selectedIds.length }}个</el-button
+          >批量下载选中文件 已选中 {{ selectedIds.length }} 个</el-button
         >
       </el-form-item>
     </el-form>
@@ -97,11 +100,11 @@
 
 <script setup>
 import { ref, reactive, nextTick, watch } from "vue";
-import axios from "axios"; // 确保引入
+import axios from "axios";
 import * as filesApi from "@/api/files";
 import { ElLoading, ElMessage } from "element-plus";
 
-const apiBase = "http://192.168.150.93:5000/api"; // 请根据实际改
+const apiBase = "http://192.168.150.93:5000/api"; // 根据实际调整
 
 const props = defineProps({
   query: {
@@ -133,37 +136,61 @@ watch(timeRange, (val) => {
   }
 });
 
-const selectedRowsMap = reactive(new Map());
-const selectedIds = ref([]);
+// normalize id key consistently to string
+const idKey = (id) => (id === null || id === undefined ? "" : String(id));
+
+// store selected rows (keys are string ids)
+const selectedRowsMap = reactive(new Map()); // Map<String(id), row or placeholder>
+const selectedIds = ref([]); // array of string keys
+
 const multipleTable = ref(null);
+
+// flags to avoid misinterpreting programmatic/page-change selection events
+const isRestoringSelection = ref(false);
+const isPageChanging = ref(false);
 
 async function fetchFileList() {
   queryLoading.value = true;
+
+  // 清空之前的选择
+  isRestoringSelection.value = true; // 避免触发 onSelectionChange 删除
+  selectedRowsMap.clear();
+  selectedIds.value = [];
+  if (
+    multipleTable.value &&
+    typeof multipleTable.value.clearSelection === "function"
+  ) {
+    multipleTable.value.clearSelection();
+  }
+  isRestoringSelection.value = false;
   try {
-    let start = null;
-    let end = null;
-    if (Array.isArray(timeRange.value) && timeRange.value.length >= 2) {
-      const s = timeRange.value[0];
-      const e = timeRange.value[1];
-      if (s)
-        start =
-          typeof s.toISOString === "function" ? s.toISOString() : String(s);
-      if (e)
-        end = typeof e.toISOString === "function" ? e.toISOString() : String(e);
+    // Construct safe params
+    const params = {};
+    if (queryLocal.uploader?.toString().trim())
+      params.uploader = queryLocal.uploader.toString().trim();
+    if (queryLocal.fileName?.toString().trim())
+      params.fileName = queryLocal.fileName.toString().trim();
+    if (queryLocal.bucket?.toString().trim())
+      params.bucket = queryLocal.bucket.toString().trim();
+    if (queryLocal.id && !isNaN(Number(queryLocal.id)))
+      params.id = Number(queryLocal.id);
+
+    if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
+      const [s, e] = timeRange.value;
+      if (s instanceof Date) params.start = s.toISOString();
+      else if (s) params.start = new Date(s).toISOString();
+      if (e instanceof Date) params.end = e.toISOString();
+      else if (e) params.end = new Date(e).toISOString();
     }
 
-    const params = {
-      uploader: queryLocal.uploader ?? "",
-      fileName: queryLocal.fileName ?? "",
-      bucket: queryLocal.bucket ?? "",
-      pageNumber: currentPage.value ?? 1,
-      pageSize: pageSize.value ?? 10,
-      start,
-      end,
-      id: queryLocal.id ?? "",
-    };
+    // paging
+    params.pageNumber = currentPage.value ?? 1;
+    params.pageSize = pageSize.value ?? 10;
 
     console.debug("[fetchFileList] send params:", params);
+
+    // mark restoring/page changing to avoid onSelectionChange deletion
+    isRestoringSelection.value = true;
 
     const res = await axios.get(`${apiBase}/filequery/query`, { params });
 
@@ -176,6 +203,7 @@ async function fetchFileList() {
 
     await nextTick();
 
+    // clear UI selection then restore for rows on this page
     if (
       multipleTable.value &&
       typeof multipleTable.value.clearSelection === "function"
@@ -185,7 +213,7 @@ async function fetchFileList() {
 
     files.value.forEach((row) => {
       if (!row || row.id === undefined || row.id === null) return;
-      if (selectedRowsMap.has(row.id)) {
+      if (selectedRowsMap.has(idKey(row.id))) {
         if (
           multipleTable.value &&
           typeof multipleTable.value.toggleRowSelection === "function"
@@ -194,8 +222,18 @@ async function fetchFileList() {
         }
       }
     });
+
+    // done restoring; if we were paginating, clear that flag too
+    isRestoringSelection.value = false;
+    isPageChanging.value = false;
+
+    // sync selectedIds to reflect current Map (string keys)
+    selectedIds.value = Array.from(selectedRowsMap.keys());
   } catch (error) {
     console.error("[fetchFileList] error:", error);
+    // ensure flags reset on error
+    isRestoringSelection.value = false;
+    isPageChanging.value = false;
     ElMessage.error("查询文件列表失败（查看控制台详细错误）");
   } finally {
     queryLoading.value = false;
@@ -203,24 +241,130 @@ async function fetchFileList() {
 }
 
 function onSelectionChange(rows) {
-  const currentIds = rows.map((r) => r.id);
-  rows.forEach((r) => r?.id && selectedRowsMap.set(r.id, r));
-  files.value.forEach((row) => {
-    if (row?.id && !currentIds.includes(row.id)) selectedRowsMap.delete(row.id);
+  // rows: currently selected rows on this visible page
+  const currentIds = rows.map((r) => idKey(r.id));
+
+  // write current page selected rows into the Map (overwrite placeholders)
+  rows.forEach((r) => {
+    if (r?.id !== undefined && r?.id !== null) {
+      selectedRowsMap.set(idKey(r.id), r);
+    }
   });
+
+  // if we are restoring programmatically or page is changing, skip deletion step
+  if (isRestoringSelection.value || isPageChanging.value) {
+    selectedIds.value = Array.from(selectedRowsMap.keys());
+    return;
+  }
+
+  // normal user interaction: delete rows present on this page but not selected
+  files.value.forEach((row) => {
+    if (row?.id !== undefined && row?.id !== null) {
+      const key = idKey(row.id);
+      if (key && !currentIds.includes(key)) {
+        selectedRowsMap.delete(key);
+      }
+    }
+  });
+
   selectedIds.value = Array.from(selectedRowsMap.keys());
 }
 
-// 取消所有选中状态
+////////////////////////////////////////////////
+
+// select every matching file across all pages (by ids)
+async function SetAllSelection() {
+  try {
+    // safe params construction
+    const params = {};
+    if (queryLocal.uploader?.toString().trim())
+      params.uploader = queryLocal.uploader.toString().trim();
+    if (queryLocal.fileName?.toString().trim())
+      params.fileName = queryLocal.fileName.toString().trim();
+    if (queryLocal.bucket?.toString().trim())
+      params.bucket = queryLocal.bucket.toString().trim();
+    if (queryLocal.id && !isNaN(Number(queryLocal.id)))
+      params.id = Number(queryLocal.id);
+
+    if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
+      const [s, e] = timeRange.value;
+      if (s instanceof Date) params.start = s.toISOString();
+      else if (s) params.start = new Date(s).toISOString();
+      if (e instanceof Date) params.end = e.toISOString();
+      else if (e) params.end = new Date(e).toISOString();
+    }
+
+    console.debug("[SetAllSelection] params:", params);
+
+    // fetch all matching ids (no paging)
+    const res =
+      Object.keys(params).length === 0
+        ? await axios.get(`${apiBase}/filequery/query-ids`)
+        : await axios.get(`${apiBase}/filequery/query-ids`, { params });
+
+    console.debug("[SetAllSelection] response:", res);
+    const allIds = res.data?.items ?? [];
+
+    // store all ids as string keys in map (placeholder objects)
+    allIds.forEach((id) => {
+      selectedRowsMap.set(idKey(id), { id }); // placeholder; will be replaced by real row when loaded
+    });
+
+    // avoid onSelectionChange deletion while we restore UI
+    isRestoringSelection.value = true;
+
+    // clear UI selection first
+    if (
+      multipleTable.value &&
+      typeof multipleTable.value.clearSelection === "function"
+    ) {
+      multipleTable.value.clearSelection();
+    }
+
+    await nextTick();
+
+    // restore UI checkboxes for current page rows
+    if (
+      multipleTable.value &&
+      typeof multipleTable.value.toggleRowSelection === "function"
+    ) {
+      files.value.forEach((row) => {
+        if (row?.id !== undefined && selectedRowsMap.has(idKey(row.id))) {
+          multipleTable.value.toggleRowSelection(row, true);
+        }
+      });
+    }
+
+    isRestoringSelection.value = false;
+    selectedIds.value = Array.from(selectedRowsMap.keys());
+
+    ElMessage.success(`已选中所有页面，共 ${allIds.length} 个文件`);
+  } catch (error) {
+    console.error("[SetAllSelection] 全选失败", error);
+    isRestoringSelection.value = false;
+    ElMessage.error("全选所有页面失败（查看控制台详情）");
+  }
+}
+
+/////////////////////////////////////////////////
+
 function clearAllSelection() {
+  // avoid race with selection-change handlers
+  isRestoringSelection.value = true;
+  isPageChanging.value = true;
+
   if (
     multipleTable.value &&
     typeof multipleTable.value.clearSelection === "function"
   ) {
     multipleTable.value.clearSelection();
-    selectedRowsMap.clear();
-    selectedIds.value = [];
   }
+
+  selectedRowsMap.clear();
+  selectedIds.value = [];
+
+  isRestoringSelection.value = false;
+  isPageChanging.value = false;
 }
 
 async function downloadById(id) {
@@ -239,7 +383,8 @@ async function downloadById(id) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(a.href);
-  } catch {
+  } catch (err) {
+    console.error("[downloadById] error:", err);
     ElMessage.error("下载失败");
   } finally {
     loading.close();
@@ -253,14 +398,24 @@ async function batchDownload() {
   }
   const loading = ElLoading.service({ text: "正在下载..." });
   try {
-    const res = await filesApi.batchDownload(selectedIds.value);
+    // convert string keys back to numbers if backend expects numbers
+    const idsToSend = selectedIds.value
+      .map((v) => Number(v))
+      .filter((n) => !isNaN(n));
+    if (idsToSend.length === 0) {
+      ElMessage.error("没有有效的 ID 发送到后端");
+      return;
+    }
+
+    const res = await filesApi.batchDownload(idsToSend);
     const blob = new Blob([res.data], { type: "application/zip" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `batch_${Date.now()}.zip`;
     a.click();
     URL.revokeObjectURL(a.href);
-  } catch {
+  } catch (err) {
+    console.error("[batchDownload] error:", err);
     ElMessage.error("批量下载失败");
   } finally {
     loading.close();
@@ -270,10 +425,12 @@ async function batchDownload() {
 function handleSizeChange(val) {
   pageSize.value = val;
   currentPage.value = 1;
+  isPageChanging.value = true;
   fetchFileList();
 }
 function handleCurrentChange(val) {
   currentPage.value = val;
+  isPageChanging.value = true;
   fetchFileList();
 }
 
