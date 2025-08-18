@@ -1,52 +1,60 @@
 <template>
   <div>
+    <!-- 查询表单 -->
     <el-form
       :inline="true"
       class="mb-3"
       style="width: 100%; display: flex; flex-wrap: wrap; align-items: center"
     >
-      <el-form-item label="上传者"
-        ><el-input v-model="queryLocal.uploader" style="width: 200px"
-      /></el-form-item>
-      <el-form-item label="文件名"
-        ><el-input v-model="queryLocal.fileName" style="width: 200px"
-      /></el-form-item>
-      <el-form-item label="所在桶"
-        ><el-input v-model="queryLocal.bucket" style="width: 200px"
-      /></el-form-item>
-      <el-form-item label="时间范围"
-        ><el-date-picker
+      <el-form-item label="上传者">
+        <el-input v-model="queryLocal.uploader" style="width: 200px" />
+      </el-form-item>
+      <el-form-item label="文件名">
+        <el-input v-model="queryLocal.fileName" style="width: 200px" />
+      </el-form-item>
+      <el-form-item label="所在桶">
+        <el-input v-model="queryLocal.bucket" style="width: 200px" />
+      </el-form-item>
+      <el-form-item label="时间范围">
+        <el-date-picker
           v-model="timeRange"
           type="datetimerange"
           style="width: 350px"
-      /></el-form-item>
-      <el-form-item label="ID"
-        ><el-input v-model="queryLocal.id" style="width: 75px"
-      /></el-form-item>
+        />
+      </el-form-item>
+      <el-form-item label="ID">
+        <el-input v-model="queryLocal.id" style="width: 75px" />
+      </el-form-item>
 
       <el-form-item style="margin-left: auto; display: flex; gap: 10px">
-        <el-button type="primary" @click="SetAllSelection"
-          >勾选全部符合条件的 {{ totalCount }} 个对象</el-button
-        >
+        <el-button type="primary" @click="SetAllSelection">
+          勾选全部符合条件的 {{ totalCount }} 个对象
+        </el-button>
         <el-button
           type="warning"
           @click="clearAllSelection"
           :disabled="selectedIds.length === 0"
-          >取消所有勾选</el-button
         >
-        <el-button @click="fetchFileList" type="primary" :loading="queryLoading"
-          >查询</el-button
+          取消所有勾选
+        </el-button>
+        <el-button
+          @click="fetchFileList"
+          type="primary"
+          :loading="queryLoading"
         >
-
+          查询
+        </el-button>
         <el-button
           type="success"
           :disabled="selectedIds.length === 0"
           @click="batchDownload"
-          >批量下载选中文件 已选中 {{ selectedIds.length }} 个</el-button
         >
+          批量下载选中文件 已选中 {{ selectedIds.length }} 个
+        </el-button>
       </el-form-item>
     </el-form>
 
+    <!-- 文件表格 -->
     <el-table
       :data="files"
       style="width: 100%"
@@ -68,10 +76,22 @@
           <el-button type="primary" size="small" @click="downloadById(row.id)"
             >下载</el-button
           >
+          <el-button type="info" size="small" @click="onPreviewClick(row)"
+            >预览</el-button
+          >
         </template>
       </el-table-column>
     </el-table>
 
+    <!-- 弹窗预览 -->
+    <el-dialog v-model="dialogVisible" width="80%" :before-close="handleClose">
+      <template #title>{{
+        currentFile?.originalFileName || "文件预览"
+      }}</template>
+      <div ref="previewContainer" class="preview-box"></div>
+    </el-dialog>
+
+    <!-- 分页 -->
     <div class="demo-pagination-block">
       <el-pagination
         v-model:current-page="currentPage"
@@ -85,10 +105,11 @@
       />
     </div>
 
+    <!-- 返回顶部 -->
     <el-backtop
       style="
-        background-color: #409eff; /* 蓝色背景 */
-        color: white; /* 让内部箭头继承白色 */
+        background-color: #409eff;
+        color: white;
         box-shadow: var(--el-box-shadow-lighter);
         width: 50px;
         height: 50px;
@@ -99,13 +120,25 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, watch } from "vue";
+import { ref, reactive, nextTick, watch, onMounted } from "vue";
 import axios from "axios";
 import * as filesApi from "@/api/files";
 import { ElLoading, ElMessage } from "element-plus";
+import { usePreview } from "@/composables/usePreview";
 
-const apiBase = "http://192.168.150.93:5000/api"; // 根据实际调整
+const apiBase = "http://192.168.150.93:5000/api"; // 后端地址
 
+// 预览相关
+const {
+  dialogVisible,
+  previewContainer,
+  currentFile,
+  previewFile,
+  handleClose,
+} = usePreview(apiBase);
+const onPreviewClick = (row) => previewFile(row);
+
+// 查询表单绑定
 const props = defineProps({
   query: {
     type: Object,
@@ -113,7 +146,6 @@ const props = defineProps({
   },
 });
 const emit = defineEmits(["update:query"]);
-
 const queryLocal = reactive({ ...props.query });
 
 watch(
@@ -123,6 +155,7 @@ watch(
 );
 watch(queryLocal, (v) => emit("update:query", { ...v }), { deep: true });
 
+// 文件表格及分页
 const files = ref([]);
 const totalCount = ref(0);
 const currentPage = ref(1);
@@ -130,232 +163,124 @@ const pageSize = ref(10);
 const queryLoading = ref(false);
 const timeRange = ref(null);
 
-watch(timeRange, (val) => {
-  if (val !== null && !Array.isArray(val)) {
-    timeRange.value = null;
-  }
-});
-
-// normalize id key consistently to string
-const idKey = (id) => (id === null || id === undefined ? "" : String(id));
-
-// store selected rows (keys are string ids)
-const selectedRowsMap = reactive(new Map()); // Map<String(id), row or placeholder>
-const selectedIds = ref([]); // array of string keys
-
+// selection
+const selectedRowsMap = reactive(new Map());
+const selectedIds = ref([]);
 const multipleTable = ref(null);
-
-// flags to avoid misinterpreting programmatic/page-change selection events
 const isRestoringSelection = ref(false);
 const isPageChanging = ref(false);
 
+// 获取文件列表
 async function fetchFileList() {
   queryLoading.value = true;
-
   try {
-    // Construct safe params
     const params = {};
-    if (queryLocal.uploader?.toString().trim())
-      params.uploader = queryLocal.uploader.toString().trim();
-    if (queryLocal.fileName?.toString().trim())
-      params.fileName = queryLocal.fileName.toString().trim();
-    if (queryLocal.bucket?.toString().trim())
-      params.bucket = queryLocal.bucket.toString().trim();
-    if (queryLocal.id && !isNaN(Number(queryLocal.id)))
-      params.id = Number(queryLocal.id);
-
+    if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
+    if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
+    if (queryLocal.bucket) params.bucket = queryLocal.bucket.trim();
+    if (queryLocal.id) params.id = Number(queryLocal.id);
     if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
       const [s, e] = timeRange.value;
-      if (s instanceof Date) params.start = s.toISOString();
-      else if (s) params.start = new Date(s).toISOString();
-      if (e instanceof Date) params.end = e.toISOString();
-      else if (e) params.end = new Date(e).toISOString();
+      params.start = new Date(s).toISOString();
+      params.end = new Date(e).toISOString();
     }
+    params.pageNumber = currentPage.value;
+    params.pageSize = pageSize.value;
 
-    // paging
-    params.pageNumber = currentPage.value ?? 1;
-    params.pageSize = pageSize.value ?? 10;
-
-    console.debug("[fetchFileList] send params:", params);
-
-    // mark restoring/page changing to avoid onSelectionChange deletion
     isRestoringSelection.value = true;
-
     const res = await axios.get(`${apiBase}/filequery/query`, { params });
-
-    console.debug("[fetchFileList] response:", res);
-
     const data = res.data ?? {};
     files.value = data.Items ?? data.items ?? data.data ?? [];
     totalCount.value =
       data.TotalCount ?? data.totalCount ?? data.total ?? files.value.length;
 
     await nextTick();
-
-    // clear UI selection then restore for rows on this page
-    if (
-      multipleTable.value &&
-      typeof multipleTable.value.clearSelection === "function"
-    ) {
+    if (multipleTable.value?.clearSelection)
       multipleTable.value.clearSelection();
-    }
-
     files.value.forEach((row) => {
-      if (!row || row.id === undefined || row.id === null) return;
-      if (selectedRowsMap.has(idKey(row.id))) {
-        if (
-          multipleTable.value &&
-          typeof multipleTable.value.toggleRowSelection === "function"
-        ) {
-          multipleTable.value.toggleRowSelection(row, true);
-        }
+      if (selectedRowsMap.has(String(row.id))) {
+        multipleTable.value?.toggleRowSelection?.(row, true);
       }
     });
 
-    // done restoring; if we were paginating, clear that flag too
     isRestoringSelection.value = false;
     isPageChanging.value = false;
-
-    // sync selectedIds to reflect current Map (string keys)
     selectedIds.value = Array.from(selectedRowsMap.keys());
-  } catch (error) {
-    console.error("[fetchFileList] error:", error);
-    // ensure flags reset on error
+  } catch (err) {
+    console.error(err);
     isRestoringSelection.value = false;
     isPageChanging.value = false;
-    ElMessage.error("查询文件列表失败（查看控制台详细错误）");
+    ElMessage.error("查询文件列表失败");
   } finally {
     queryLoading.value = false;
   }
 }
 
+// selection change
 function onSelectionChange(rows) {
-  // rows: currently selected rows on this visible page
-  const currentIds = rows.map((r) => idKey(r.id));
-
-  // write current page selected rows into the Map (overwrite placeholders)
-  rows.forEach((r) => {
-    if (r?.id !== undefined && r?.id !== null) {
-      selectedRowsMap.set(idKey(r.id), r);
-    }
-  });
-
-  // if we are restoring programmatically or page is changing, skip deletion step
+  const currentIds = rows.map((r) => String(r.id));
+  rows.forEach((r) => selectedRowsMap.set(String(r.id), r));
   if (isRestoringSelection.value || isPageChanging.value) {
     selectedIds.value = Array.from(selectedRowsMap.keys());
     return;
   }
-
-  // normal user interaction: delete rows present on this page but not selected
   files.value.forEach((row) => {
-    if (row?.id !== undefined && row?.id !== null) {
-      const key = idKey(row.id);
-      if (key && !currentIds.includes(key)) {
-        selectedRowsMap.delete(key);
-      }
-    }
+    const key = String(row.id);
+    if (!currentIds.includes(key)) selectedRowsMap.delete(key);
   });
-
   selectedIds.value = Array.from(selectedRowsMap.keys());
 }
 
-////////////////////////////////////////////////
-
-// select every matching file across all pages (by ids)
+// 全选当前查询所有页面
 async function SetAllSelection() {
   try {
-    // safe params construction
     const params = {};
-    if (queryLocal.uploader?.toString().trim())
-      params.uploader = queryLocal.uploader.toString().trim();
-    if (queryLocal.fileName?.toString().trim())
-      params.fileName = queryLocal.fileName.toString().trim();
-    if (queryLocal.bucket?.toString().trim())
-      params.bucket = queryLocal.bucket.toString().trim();
-    if (queryLocal.id && !isNaN(Number(queryLocal.id)))
-      params.id = Number(queryLocal.id);
-
+    if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
+    if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
+    if (queryLocal.bucket) params.bucket = queryLocal.bucket.trim();
+    if (queryLocal.id) params.id = Number(queryLocal.id);
     if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
       const [s, e] = timeRange.value;
-      if (s instanceof Date) params.start = s.toISOString();
-      else if (s) params.start = new Date(s).toISOString();
-      if (e instanceof Date) params.end = e.toISOString();
-      else if (e) params.end = new Date(e).toISOString();
+      params.start = new Date(s).toISOString();
+      params.end = new Date(e).toISOString();
     }
 
-    console.debug("[SetAllSelection] params:", params);
-
-    // fetch all matching ids (no paging)
     const res =
       Object.keys(params).length === 0
         ? await axios.get(`${apiBase}/filequery/query-ids`)
         : await axios.get(`${apiBase}/filequery/query-ids`, { params });
 
-    console.debug("[SetAllSelection] response:", res);
     const allIds = res.data?.items ?? [];
-
-    // store all ids as string keys in map (placeholder objects)
-    allIds.forEach((id) => {
-      selectedRowsMap.set(idKey(id), { id }); // placeholder; will be replaced by real row when loaded
-    });
-
-    // avoid onSelectionChange deletion while we restore UI
+    allIds.forEach((id) => selectedRowsMap.set(String(id), { id }));
     isRestoringSelection.value = true;
-
-    // clear UI selection first
-    if (
-      multipleTable.value &&
-      typeof multipleTable.value.clearSelection === "function"
-    ) {
-      multipleTable.value.clearSelection();
-    }
-
+    multipleTable.value?.clearSelection?.();
     await nextTick();
-
-    // restore UI checkboxes for current page rows
-    if (
-      multipleTable.value &&
-      typeof multipleTable.value.toggleRowSelection === "function"
-    ) {
-      files.value.forEach((row) => {
-        if (row?.id !== undefined && selectedRowsMap.has(idKey(row.id))) {
-          multipleTable.value.toggleRowSelection(row, true);
-        }
-      });
-    }
-
+    files.value.forEach((row) => {
+      if (selectedRowsMap.has(String(row.id)))
+        multipleTable.value?.toggleRowSelection?.(row, true);
+    });
     isRestoringSelection.value = false;
     selectedIds.value = Array.from(selectedRowsMap.keys());
-
     ElMessage.success(`已选中所有页面，共 ${allIds.length} 个文件`);
-  } catch (error) {
-    console.error("[SetAllSelection] 全选失败", error);
+  } catch (err) {
+    console.error(err);
     isRestoringSelection.value = false;
-    ElMessage.error("全选所有页面失败（查看控制台详情）");
+    ElMessage.error("全选失败");
   }
 }
 
-/////////////////////////////////////////////////
-
+// 清空选择
 function clearAllSelection() {
-  // avoid race with selection-change handlers
   isRestoringSelection.value = true;
   isPageChanging.value = true;
-
-  if (
-    multipleTable.value &&
-    typeof multipleTable.value.clearSelection === "function"
-  ) {
-    multipleTable.value.clearSelection();
-  }
-
+  multipleTable.value?.clearSelection?.();
   selectedRowsMap.clear();
   selectedIds.value = [];
-
   isRestoringSelection.value = false;
   isPageChanging.value = false;
 }
 
+// 下载
 async function downloadById(id) {
   const loading = ElLoading.service({ text: "正在下载..." });
   try {
@@ -373,13 +298,14 @@ async function downloadById(id) {
     a.click();
     URL.revokeObjectURL(a.href);
   } catch (err) {
-    console.error("[downloadById] error:", err);
+    console.error(err);
     ElMessage.error("下载失败");
   } finally {
     loading.close();
   }
 }
 
+// 批量下载
 async function batchDownload() {
   if (selectedIds.value.length === 0) {
     ElMessage.warning("请先选择要下载的文件");
@@ -387,15 +313,8 @@ async function batchDownload() {
   }
   const loading = ElLoading.service({ text: "正在下载..." });
   try {
-    // convert string keys back to numbers if backend expects numbers
-    const idsToSend = selectedIds.value
-      .map((v) => Number(v))
-      .filter((n) => !isNaN(n));
-    if (idsToSend.length === 0) {
-      ElMessage.error("没有有效的 ID 发送到后端");
-      return;
-    }
-
+    const idsToSend = selectedIds.value.map(Number).filter((n) => !isNaN(n));
+    if (idsToSend.length === 0) return ElMessage.error("没有有效 ID");
     const res = await filesApi.batchDownload(idsToSend);
     const blob = new Blob([res.data], { type: "application/zip" });
     const a = document.createElement("a");
@@ -404,13 +323,14 @@ async function batchDownload() {
     a.click();
     URL.revokeObjectURL(a.href);
   } catch (err) {
-    console.error("[batchDownload] error:", err);
+    console.error(err);
     ElMessage.error("批量下载失败");
   } finally {
     loading.close();
   }
 }
 
+// 分页
 function handleSizeChange(val) {
   pageSize.value = val;
   currentPage.value = 1;
@@ -423,11 +343,9 @@ function handleCurrentChange(val) {
   fetchFileList();
 }
 
+// 初次加载
+onMounted(fetchFileList);
 defineExpose({ fetchFileList });
-
-nextTick(() => {
-  fetchFileList();
-});
 </script>
 
 <style scoped>
@@ -435,5 +353,9 @@ nextTick(() => {
   display: flex;
   justify-content: center;
   padding: 12px 0;
+}
+.preview-box {
+  width: 100%;
+  text-align: center;
 }
 </style>
