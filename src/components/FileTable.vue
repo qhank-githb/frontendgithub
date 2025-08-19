@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- 查询表单 -->
+    <!------------- 查询表单，包含勾选 下载等按钮 开始 --------------------->
     <el-form
       :inline="true"
       class="mb-3"
@@ -82,6 +82,9 @@
         </template>
       </el-table-column>
     </el-table>
+    <!------------- 查询表单，包含勾选 下载等按钮 结束 --------------------->
+
+    <!--------预览文件区域 开始---------->
     <el-dialog v-model="dialogVisible" width="80%" :before-close="closeDialog">
       <!-- Office 文件 -->
       <vue-office-docx
@@ -147,7 +150,9 @@
       <!-- 不支持 -->
       <div v-if="fileType === 'unknown'">不支持预览此类型文件</div>
     </el-dialog>
+    <!--------------预览文件区域 结束-------------->
 
+    <!------------------分页部分 开始------------------>
     <div class="demo-pagination-block">
       <el-pagination
         v-model:current-page="currentPage"
@@ -160,8 +165,9 @@
         @current-change="handleCurrentChange"
       />
     </div>
+    <!-------------分页部分 结束---------------->
 
-    <!-- 返回顶部 -->
+    <!--------------- 返回顶部 开始 ------------>
     <el-backtop
       style="
         background-color: #409eff;
@@ -172,6 +178,7 @@
         font-size: 32px;
       "
     />
+    <!------------ 返回顶部 结束 ------------->
   </div>
 </template>
 
@@ -195,7 +202,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 ).href;
 
 const apiBase = "http://192.168.150.93:5000/api"; // 后端地址
-//////////////预览
+//////////////预览开始
 
 const {
   dialogVisible,
@@ -213,7 +220,7 @@ const {
 function handlePreview(id, filename) {
   previewFileById(id, filename);
 }
-/////////////
+/////////////预览结束
 
 // 查询表单绑定
 const props = defineProps({
