@@ -83,7 +83,7 @@
       </el-table-column>
     </el-table>
     <el-dialog v-model="dialogVisible" width="80%" :before-close="closeDialog">
-      <!-- Word 文档 -->
+      <!-- Office 文件 -->
       <vue-office-docx
         v-if="fileType === 'docx' && fileUrl"
         :src="fileUrl"
@@ -91,7 +91,13 @@
         @rendered="onRendered"
         @error="onError"
       />
-      <!-- Excel 文档 -->
+      <vue-office-pptx
+        v-if="fileType === 'pptx' && fileUrl"
+        :src="fileUrl"
+        style="height: 80vh; width: 100%"
+        @rendered="onRendered"
+        @error="onError"
+      />
       <vue-office-excel
         v-if="fileType === 'xlsx' && fileUrl"
         :src="fileUrl"
@@ -99,8 +105,6 @@
         @rendered="onRendered"
         @error="onError"
       />
-
-      <!-- PDF 文档 -->
       <vue-office-pdf
         v-if="fileType === 'pdf' && fileUrl"
         :src="fileUrl"
@@ -108,24 +112,40 @@
         @rendered="onRendered"
         @error="onError"
       />
-      <!-- 图片预览 -->
+
+      <!-- 图片 -->
       <img
-        v-if="fileType === 'image' && fileUrl"
+        v-if="
+          ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileType) &&
+          fileUrl
+        "
         :src="fileUrl"
-        alt="图片预览"
         style="max-width: 100%; max-height: 80vh"
       />
-      <!-- 视频预览 -->
+
+      <!-- 视频 -->
       <video
-        v-if="fileType === 'video' && fileUrl"
+        v-if="['mp4', 'webm', 'ogg'].includes(fileType) && fileUrl"
         :src="fileUrl"
         controls
         style="max-width: 100%; max-height: 80vh"
       ></video>
-      <!-- 不支持文件 -->
-      <div v-if="fileType === 'unknown'" style="color: red">
-        不支持预览此类型文件
-      </div>
+
+      <!-- 文本 -->
+      <pre
+        v-if="['txt', 'csv', 'log'].includes(fileType)"
+        style="white-space: pre-wrap"
+        >{{ textContent }}</pre
+      >
+
+      <!-- Markdown -->
+      <div v-if="fileType === 'md'" v-html="renderedMarkdown"></div>
+
+      <!-- JSON -->
+      <pre v-if="fileType === 'json'">{{ formattedJson }}</pre>
+
+      <!-- 不支持 -->
+      <div v-if="fileType === 'unknown'">不支持预览此类型文件</div>
     </el-dialog>
 
     <div class="demo-pagination-block">
@@ -162,6 +182,7 @@ import * as filesApi from "@/api/files";
 import { ElLoading, ElMessage } from "element-plus";
 import VueOfficeDocx from "@vue-office/docx";
 import VueOfficeExcel from "@vue-office/excel";
+import VueOfficePptx from "@vue-office/pptx";
 import VueOfficePdf from "@vue-office/pdf";
 import "@vue-office/docx/lib/index.css";
 import "@vue-office/excel/lib/index.css";
@@ -176,26 +197,22 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 const apiBase = "http://192.168.150.93:5000/api"; // 后端地址
 //////////////预览
 
-// 使用 composable
 const {
   dialogVisible,
   fileUrl,
   fileType,
+  textContent,
+  renderedMarkdown,
+  formattedJson,
   previewFileById,
   onRendered,
   onError,
+  closeDialog,
 } = useUniversalPreview("http://192.168.150.93:5000");
 
-// 点击按钮预览文件
 function handlePreview(id, filename) {
   previewFileById(id, filename);
 }
-
-// 关闭弹窗时清空文件
-function closeDialog() {
-  dialogVisible.value = false;
-}
-
 /////////////
 
 // 查询表单绑定

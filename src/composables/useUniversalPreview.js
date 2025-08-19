@@ -1,61 +1,63 @@
-// src/composables/useUniversalPreview.js
+// useUniversalPreview.js
 import { ref } from "vue";
 import axios from "axios";
+import { marked } from "marked"; // markdown 解析
+
+// vue-office 组件
 
 export function useUniversalPreview(baseUrl = "http://192.168.150.93:5000") {
   const dialogVisible = ref(false);
   const fileUrl = ref(null);
   const fileType = ref(null);
-  const officeViewerUrl = ref("");
+  const textContent = ref("");
+  const renderedMarkdown = ref("");
+  const formattedJson = ref("");
 
   function onRendered() {
     console.log("文件渲染完成");
   }
 
-  function onError() {
-    console.log("文件渲染失败");
+  function onError(e) {
+    console.error("文件渲染失败", e);
   }
 
   function closeDialog() {
-    fileUrl.value && URL.revokeObjectURL(fileUrl.value);
+    if (fileUrl.value) URL.revokeObjectURL(fileUrl.value);
     dialogVisible.value = false;
     fileUrl.value = null;
-    officeViewerUrl.value = "";
     fileType.value = null;
+    textContent.value = "";
+    renderedMarkdown.value = "";
+    formattedJson.value = "";
   }
 
   async function previewFileById(id, filename) {
     const ext = filename.split(".").pop().toLowerCase();
-
-    // 判断类型
-    if (["docx"].includes(ext)) fileType.value = "docx";
-    else if (["xlsx"].includes(ext)) fileType.value = "xlsx";
-    else if (["pptx"].includes(ext)) fileType.value = "pptx";
-    else if (["pdf"].includes(ext)) fileType.value = "pdf";
-    else if (["doc", "xls", "ppt"].includes(ext)) fileType.value = "office";
-    else fileType.value = "unknown";
-
-    if (fileType.value === "office") {
-      const fileUrlTemp = `${baseUrl}/api/file/download-by-id?id=${id}`;
-      officeViewerUrl.value = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
-        fileUrlTemp
-      )}`;
-      dialogVisible.value = true;
-      return;
-    }
+    fileType.value = ext;
 
     try {
+      const isText = ["txt", "csv", "log", "md", "json"].includes(ext);
       const res = await axios.get(
         `${baseUrl}/api/file/preview-by-id?id=${id}`,
-        { responseType: "blob" }
+        {
+          responseType: isText ? "text" : "blob",
+        }
       );
-      fileUrl.value = URL.createObjectURL(res.data);
+
+      if (["txt", "csv", "log"].includes(ext)) {
+        textContent.value = res.data;
+      } else if (ext === "md") {
+        renderedMarkdown.value = marked(res.data);
+      } else if (ext === "json") {
+        formattedJson.value = JSON.stringify(JSON.parse(res.data), null, 2);
+      } else {
+        fileUrl.value = URL.createObjectURL(res.data);
+      }
+
       dialogVisible.value = true;
     } catch (err) {
       console.error("加载文件失败", err);
-      fileUrl.value = null;
-      fileType.value = "unknown";
-      dialogVisible.value = false;
+      closeDialog();
     }
   }
 
@@ -63,7 +65,9 @@ export function useUniversalPreview(baseUrl = "http://192.168.150.93:5000") {
     dialogVisible,
     fileUrl,
     fileType,
-    officeViewerUrl,
+    textContent,
+    renderedMarkdown,
+    formattedJson,
     previewFileById,
     onRendered,
     onError,
