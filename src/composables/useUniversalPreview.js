@@ -1,69 +1,72 @@
+// src/composables/useUniversalPreview.js
 import { ref } from "vue";
 import axios from "axios";
-import * as pdfjsLib from "pdfjs-dist";
-import * as filesApi from "@/api/files";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js";
 
 export function useUniversalPreview(baseUrl = "http://192.168.150.93:5000") {
   const dialogVisible = ref(false);
-  const fileUrl = ref(null); // Office 文件 URL
-  const fileType = ref(null); // 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'image' | 'video'
-  const fileBlob = ref(null); // PDF/图片/视频 Blob
+  const fileUrl = ref(null);
+  const fileType = ref(null);
+  const officeViewerUrl = ref("");
 
   function onRendered() {
     console.log("文件渲染完成");
   }
+
   function onError() {
     console.log("文件渲染失败");
   }
 
-  async function previewFile(id, filename) {
-    const ext = filename.split(".").pop().toLowerCase();
-    let type = "";
+  function closeDialog() {
+    fileUrl.value && URL.revokeObjectURL(fileUrl.value);
+    dialogVisible.value = false;
+    fileUrl.value = null;
+    officeViewerUrl.value = "";
+    fileType.value = null;
+  }
 
-    if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext))
-      type = "image";
-    else if (["mp4", "webm", "ogg"].includes(ext)) type = "video";
-    else if (ext === "pdf") type = "pdf";
-    else if (["doc", "docx"].includes(ext)) type = "docx";
-    else if (["xls", "xlsx"].includes(ext)) type = "xlsx";
-    else if (["ppt", "pptx"].includes(ext)) type = "pptx";
-    else type = "unknown";
+  async function previewFileById(id, filename) {
+    const ext = filename.split(".").pop().toLowerCase();
+
+    // 判断类型
+    if (["docx"].includes(ext)) fileType.value = "docx";
+    else if (["xlsx"].includes(ext)) fileType.value = "xlsx";
+    else if (["pptx"].includes(ext)) fileType.value = "pptx";
+    else if (["pdf"].includes(ext)) fileType.value = "pdf";
+    else if (["doc", "xls", "ppt"].includes(ext)) fileType.value = "office";
+    else fileType.value = "unknown";
+
+    if (fileType.value === "office") {
+      const fileUrlTemp = `${baseUrl}/api/file/download-by-id?id=${id}`;
+      officeViewerUrl.value = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
+        fileUrlTemp
+      )}`;
+      dialogVisible.value = true;
+      return;
+    }
 
     try {
-      if (["docx", "xlsx", "pptx"].includes(type)) {
-        const res = await axios.get(
-          `${baseUrl}/api/file/preview-by-id?id=${id}`,
-          { responseType: "blob" }
-        );
-        fileUrl.value = URL.createObjectURL(res.data);
-        fileType.value = type;
-      } else if (["pdf", "image", "video"].includes(type)) {
-        const res = await filesApi.downloadById(id, { responseType: "blob" });
-        fileBlob.value = res.data;
-        fileType.value = type;
-      } else {
-        fileType.value = "unknown";
-      }
+      const res = await axios.get(
+        `${baseUrl}/api/file/preview-by-id?id=${id}`,
+        { responseType: "blob" }
+      );
+      fileUrl.value = URL.createObjectURL(res.data);
       dialogVisible.value = true;
     } catch (err) {
-      console.error("[useUniversalPreview] error:", err);
-      dialogVisible.value = false;
+      console.error("加载文件失败", err);
       fileUrl.value = null;
-      fileBlob.value = null;
-      fileType.value = null;
+      fileType.value = "unknown";
+      dialogVisible.value = false;
     }
   }
 
   return {
     dialogVisible,
     fileUrl,
-    fileBlob,
     fileType,
-    previewFile,
+    officeViewerUrl,
+    previewFileById,
     onRendered,
     onError,
+    closeDialog,
   };
 }

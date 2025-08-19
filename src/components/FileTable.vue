@@ -82,8 +82,8 @@
         </template>
       </el-table-column>
     </el-table>
-    <el-dialog v-model="dialogVisible" width="80%">
-      <!-- Office 文件 -->
+    <el-dialog v-model="dialogVisible" width="80%" :before-close="closeDialog">
+      <!-- Word 文档 -->
       <vue-office-docx
         v-if="fileType === 'docx' && fileUrl"
         :src="fileUrl"
@@ -91,6 +91,7 @@
         @rendered="onRendered"
         @error="onError"
       />
+      <!-- Excel 文档 -->
       <vue-office-excel
         v-if="fileType === 'xlsx' && fileUrl"
         :src="fileUrl"
@@ -99,13 +100,28 @@
         @error="onError"
       />
 
-      <!-- PDF/图片/视频 -->
-      <div
-        v-if="['pdf', 'image', 'video'].includes(fileType)"
-        ref="containerRef"
-        style="width: 100%; height: 600px; overflow: auto"
-      ></div>
-
+      <!-- PDF 文档 -->
+      <vue-office-pdf
+        v-if="fileType === 'pdf' && fileUrl"
+        :src="fileUrl"
+        style="height: 80vh; width: 100%"
+        @rendered="onRendered"
+        @error="onError"
+      />
+      <!-- 图片预览 -->
+      <img
+        v-if="fileType === 'image' && fileUrl"
+        :src="fileUrl"
+        alt="图片预览"
+        style="max-width: 100%; max-height: 80vh"
+      />
+      <!-- 视频预览 -->
+      <video
+        v-if="fileType === 'video' && fileUrl"
+        :src="fileUrl"
+        controls
+        style="max-width: 100%; max-height: 80vh"
+      ></video>
       <!-- 不支持文件 -->
       <div v-if="fileType === 'unknown'" style="color: red">
         不支持预览此类型文件
@@ -146,56 +162,40 @@ import * as filesApi from "@/api/files";
 import { ElLoading, ElMessage } from "element-plus";
 import VueOfficeDocx from "@vue-office/docx";
 import VueOfficeExcel from "@vue-office/excel";
+import VueOfficePdf from "@vue-office/pdf";
 import "@vue-office/docx/lib/index.css";
 import "@vue-office/excel/lib/index.css";
 import { useUniversalPreview } from "@/composables/useUniversalPreview";
 import * as pdfjsLib from "pdfjs-dist";
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.js",
+  import.meta.url
+).href;
+
 const apiBase = "http://192.168.150.93:5000/api"; // 后端地址
 //////////////预览
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js";
 
+// 使用 composable
 const {
   dialogVisible,
   fileUrl,
-  fileBlob,
   fileType,
-  previewFile,
+  previewFileById,
   onRendered,
   onError,
 } = useUniversalPreview("http://192.168.150.93:5000");
 
-const containerRef = ref(null);
-
+// 点击按钮预览文件
 function handlePreview(id, filename) {
-  previewFile(id, filename);
+  previewFileById(id, filename);
 }
 
-// 渲染 PDF/图片/视频
-watch([fileType, fileBlob], async () => {
-  if (!containerRef.value || !fileBlob.value) return;
-  if (fileType.value === "image") {
-    const url = URL.createObjectURL(fileBlob.value);
-    containerRef.value.innerHTML = `<img src="${url}" style="max-width:100%; max-height:600px"/>`;
-  } else if (fileType.value === "video") {
-    const url = URL.createObjectURL(fileBlob.value);
-    containerRef.value.innerHTML = `<video src="${url}" controls style="max-width:100%; max-height:600px"></video>`;
-  } else if (fileType.value === "pdf") {
-    const arrayBuffer = await fileBlob.value.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 1.5 });
+// 关闭弹窗时清空文件
+function closeDialog() {
+  dialogVisible.value = false;
+}
 
-    const canvas = document.createElement("canvas");
-    containerRef.value.innerHTML = "";
-    containerRef.value.appendChild(canvas);
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-    const ctx = canvas.getContext("2d");
-    await page.render({ canvasContext: ctx, viewport }).promise;
-  }
-});
 /////////////
 
 // 查询表单绑定
