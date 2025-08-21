@@ -27,6 +27,28 @@
       </el-form-item>
 
       <el-form-item style="margin-left: auto; display: flex; gap: 10px">
+        <el-select
+          v-model="selectedTags"
+          multiple
+          filterable
+          allow-create
+          collapse-tags
+          placeholder="选择或输入标签"
+          style="width: 300px"
+        >
+          <el-option
+            v-for="tag in allTags"
+            :key="tag.id"
+            :label="tag.name"
+            :value="tag.id"
+          />
+        </el-select>
+
+        <!-- 匹配模式 -->
+        <el-checkbox v-model="tagMatchMode" true-label="all" false-label="any"
+          >全部匹配</el-checkbox
+        >
+
         <el-button type="primary" @click="SetAllSelection">
           勾选全部符合条件的 {{ totalCount }} 个对象
         </el-button>
@@ -194,6 +216,7 @@ import VueOfficePdf from "@vue-office/pdf";
 import "@vue-office/docx/lib/index.css";
 import "@vue-office/excel/lib/index.css";
 import { useUniversalPreview } from "@/composables/useUniversalPreview";
+import { useTagQuery } from "@/composables/useTagQuery.js";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -221,6 +244,17 @@ function handlePreview(id, filename) {
   previewFileById(id, filename);
 }
 /////////////预览结束
+
+////////tag查询
+// --- 新增 tag 状态 ---
+const selectedTags = ref([]); // 多选标签
+const allTags = ref([]); // 可选的标签列表
+const tagMatchMode = ref("any"); // 'any' 或 'all'，checkbox 控制
+///////
+
+function onSelectionChange(selection) {
+  selectedIds.value = selection.map((item) => item.id);
+}
 
 // 查询表单绑定
 const props = defineProps({
@@ -255,84 +289,85 @@ const isRestoringSelection = ref(false);
 const isPageChanging = ref(false);
 
 // 获取文件列表
-async function fetchFileList() {
+async function fetchFileList(options = {}) {
   queryLoading.value = true;
   try {
-    const params = {};
+    const params = {
+      pageNumber: options.pageNumber ?? currentPage.value,
+      pageSize: options.pageSize ?? pageSize.value,
+    };
+
+    // 查询条件
+    if (queryLocal.id) params.id = Number(queryLocal.id);
     if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
     if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
     if (queryLocal.bucket) params.bucket = queryLocal.bucket.trim();
-    if (queryLocal.id) params.id = Number(queryLocal.id);
     if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
-      const [s, e] = timeRange.value;
-      params.start = new Date(s).toISOString();
-      params.end = new Date(e).toISOString();
+      params.start = new Date(timeRange.value[0]).toISOString();
+      params.end = new Date(timeRange.value[1]).toISOString();
     }
-    params.pageNumber = currentPage.value;
-    params.pageSize = pageSize.value;
+    if (selectedTags.value.length > 0) {
+      params.tags = selectedTags.value;
+      params.matchAllTags = tagMatchMode.value === "all";
+    }
 
-    isRestoringSelection.value = true;
-    const res = await axios.get(`${apiBase}/filequery/query`, { params });
+    console.log("fetchFileList params:", params);
+    const res = await axios.get(
+      "http://192.168.150.93:5000/api/filequery/query",
+      {
+        params,
+        headers: { Accept: "application/json" },
+      }
+    );
+    console.log(res.data);
+
     const data = res.data ?? {};
-    files.value = data.Items ?? data.items ?? data.data ?? [];
-    totalCount.value =
-      data.TotalCount ?? data.totalCount ?? data.total ?? files.value.length;
+    files.value = data.items ?? [];
+    totalCount.value = data.totalCount ?? files.value.length;
 
     await nextTick();
     if (multipleTable.value?.clearSelection)
       multipleTable.value.clearSelection();
-    files.value.forEach((row) => {
-      if (selectedRowsMap.has(String(row.id))) {
-        multipleTable.value?.toggleRowSelection?.(row, true);
-      }
-    });
 
-    isRestoringSelection.value = false;
-    isPageChanging.value = false;
-    selectedIds.value = Array.from(selectedRowsMap.keys());
+    // 恢复选中状态
+    selectedIds.value.forEach((id) => {
+      const row = files.value.find((f) => f.id === id);
+      if (row) multipleTable.value?.toggleRowSelection?.(row, true);
+    });
   } catch (err) {
-    console.error(err);
-    isRestoringSelection.value = false;
-    isPageChanging.value = false;
-    ElMessage.error("查询文件列表失败");
+    console.error("fetchFileList error:", err);
+    ElMessage.error("查询文件列表失败，请检查接口或网络");
   } finally {
     queryLoading.value = false;
   }
 }
 
 // selection change
-function onSelectionChange(rows) {
-  const currentIds = rows.map((r) => String(r.id));
-  rows.forEach((r) => selectedRowsMap.set(String(r.id), r));
-  if (isRestoringSelection.value || isPageChanging.value) {
-    selectedIds.value = Array.from(selectedRowsMap.keys());
-    return;
-  }
-  files.value.forEach((row) => {
-    const key = String(row.id);
-    if (!currentIds.includes(key)) selectedRowsMap.delete(key);
-  });
-  selectedIds.value = Array.from(selectedRowsMap.keys());
-}
-
-// 全选当前查询所有页面
 async function SetAllSelection() {
   try {
     const params = {};
+    if (queryLocal.id) params.id = Number(queryLocal.id);
     if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
     if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
     if (queryLocal.bucket) params.bucket = queryLocal.bucket.trim();
-    if (queryLocal.id) params.id = Number(queryLocal.id);
     if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
-      const [s, e] = timeRange.value;
-      params.start = new Date(s).toISOString();
-      params.end = new Date(e).toISOString();
+      params.start = new Date(timeRange.value[0]).toISOString();
+      params.end = new Date(timeRange.value[1]).toISOString();
+    }
+    if (selectedTags.value.length > 0) {
+      params.tags = selectedTags.value;
+      params.matchAllTags = tagMatchMode.value === "all";
     }
 
     const res =
       Object.keys(params).length === 0
-        ? await axios.get(`${apiBase}/filequery/query-ids`)
-        : await axios.get(`${apiBase}/filequery/query-ids`, { params });
+        ? await axios.get(`${apiBase}/filequery/query-ids`, {
+            responseType: "json",
+          })
+        : await axios.get(`${apiBase}/filequery/query-ids`, {
+            params,
+            responseType: "json",
+          });
 
     const allIds = res.data?.items ?? [];
     allIds.forEach((id) => selectedRowsMap.set(String(id), { id }));
@@ -345,7 +380,7 @@ async function SetAllSelection() {
     });
     isRestoringSelection.value = false;
     selectedIds.value = Array.from(selectedRowsMap.keys());
-    ElMessage.success(`已选中所有页面，共 ${allIds.length} 个文件`);
+    ElMessage.success(`已选中所有符合条件的文件，共 ${allIds.length} 个`);
   } catch (err) {
     console.error(err);
     isRestoringSelection.value = false;
@@ -428,7 +463,15 @@ function handleCurrentChange(val) {
 }
 
 // 初次加载
-onMounted(fetchFileList);
+onMounted(async () => {
+  fetchFileList();
+  try {
+    const res = await axios.get("http://192.168.150.93:5000/api/tags");
+    allTags.value = res.data;
+  } catch (err) {
+    console.error("加载标签失败", err);
+  }
+});
 defineExpose({ fetchFileList });
 </script>
 

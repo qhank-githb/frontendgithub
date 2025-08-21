@@ -8,7 +8,9 @@ export async function fetchBuckets() {
 }
 
 export async function fetchFileList(params) {
-  const res = await http.get("/filequery/query", { params });
+  const res = await http.get("http://192.168.150.93:5000/api/filequery/query", {
+    params,
+  });
   return res.data;
 }
 

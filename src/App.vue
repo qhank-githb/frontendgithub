@@ -58,6 +58,7 @@ import FileTable from "./components/FileTable.vue";
 import { fetchBuckets } from "./api/files";
 import { ElMessage } from "element-plus";
 
+const allTags = ref([]);
 const username = ref("bolo-vue-test");
 const bucketOptions = ref([]);
 const selectedBucket = ref("");
@@ -77,7 +78,17 @@ async function loadBuckets() {
   }
 }
 
-onMounted(loadBuckets);
+onMounted(async () => {
+  await loadBuckets(); // 先加载桶
+  try {
+    const res = await fetch("/api/tags");
+    const data = await res.json();
+    allTags.value = data.map((t) => t.name); // 假设返回 [{id, name}, ...]
+  } catch (err) {
+    ElMessage.error("获取标签失败");
+    console.error(err);
+  }
+});
 
 function onUploadSuccess(payload) {
   console.log("[App] upload-success payload:", payload);
