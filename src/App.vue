@@ -1,4 +1,9 @@
 <template>
+  <div>
+    <input v-model="JWTusername" placeholder="用户名" />
+    <input v-model="JWTpassword" type="password" placeholder="密码" />
+    <button @click="handleLogin">登录</button>
+  </div>
   <el-card>
     <h2>文件上传</h2>
 
@@ -57,6 +62,21 @@ import UploadArea from "./components/UploadArea.vue";
 import FileTable from "./components/FileTable.vue";
 import { fetchBuckets } from "./api/files";
 import { ElMessage } from "element-plus";
+import { login } from "@/services/auth.js";
+
+const JWTpassword = ref("");
+const JWTusername = ref("");
+
+async function handleLogin() {
+  try {
+    const token = await login(JWTusername.value, JWTpassword.value);
+    console.log("登录成功，Token:", token);
+    // 可以跳转页面或刷新文件列表
+    fileTableRef.value?.fetchFileList?.();
+  } catch (err) {
+    alert("登录失败");
+  }
+}
 
 const allTags = ref([]);
 const username = ref("bolo-vue-test");
