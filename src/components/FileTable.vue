@@ -40,7 +40,7 @@
             v-for="tag in allTags"
             :key="tag.id"
             :label="tag.name"
-            :value="tag.id"
+            :value="tag.name"
           />
         </el-select>
 
@@ -215,6 +215,7 @@ import VueOfficePptx from "@vue-office/pptx";
 import VueOfficePdf from "@vue-office/pdf";
 import "@vue-office/docx/lib/index.css";
 import "@vue-office/excel/lib/index.css";
+import qs from "qs";
 import { useUniversalPreview } from "@/composables/useUniversalPreview";
 import { useTagQuery } from "@/composables/useTagQuery.js";
 import * as pdfjsLib from "pdfjs-dist";
@@ -289,15 +290,15 @@ const isRestoringSelection = ref(false);
 const isPageChanging = ref(false);
 
 // 获取文件列表
-async function fetchFileList(options = {}) {
+async function fetchFileList() {
   queryLoading.value = true;
   try {
     const params = {
-      pageNumber: options.pageNumber ?? currentPage.value,
-      pageSize: options.pageSize ?? pageSize.value,
+      pageNumber: currentPage.value,
+      pageSize: pageSize.value,
     };
 
-    // 查询条件
+    // 基本查询条件
     if (queryLocal.id) params.id = Number(queryLocal.id);
     if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
     if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
@@ -306,30 +307,32 @@ async function fetchFileList(options = {}) {
       params.start = new Date(timeRange.value[0]).toISOString();
       params.end = new Date(timeRange.value[1]).toISOString();
     }
+
+    // 标签条件
     if (selectedTags.value.length > 0) {
-      params.tags = selectedTags.value;
+      params.tags = [...selectedTags.value];
       params.matchAllTags = tagMatchMode.value === "all";
     }
 
     console.log("fetchFileList params:", params);
-    const res = await axios.get(
-      "http://192.168.150.93:5000/api/filequery/query",
-      {
-        params,
-        headers: { Accept: "application/json" },
-      }
-    );
-    console.log(res.data);
+
+    const res = await axios.get(`${apiBase}/filequery/query`, {
+      params,
+      headers: { Accept: "application/json" },
+      paramsSerializer: (params) =>
+        qs.stringify(params, { arrayFormat: "repeat" }),
+    });
 
     const data = res.data ?? {};
     files.value = data.items ?? [];
     totalCount.value = data.totalCount ?? files.value.length;
 
     await nextTick();
-    if (multipleTable.value?.clearSelection)
-      multipleTable.value.clearSelection();
 
-    // 恢复选中状态
+    // 清空表格选中状态
+    multipleTable.value?.clearSelection?.();
+
+    // 恢复已选中行
     selectedIds.value.forEach((id) => {
       const row = files.value.find((f) => f.id === id);
       if (row) multipleTable.value?.toggleRowSelection?.(row, true);
