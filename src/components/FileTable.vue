@@ -1,79 +1,102 @@
 <template>
   <div>
-    <!------------- 查询表单，包含勾选 下载等按钮 开始 --------------------->
-    <el-form
-      :inline="true"
-      class="mb-3"
-      style="width: 100%; display: flex; flex-wrap: wrap; align-items: center"
-    >
-      <el-form-item label="上传者">
-        <el-input v-model="queryLocal.uploader" style="width: 200px" />
-      </el-form-item>
-      <el-form-item label="文件名">
-        <el-input v-model="queryLocal.fileName" style="width: 200px" />
-      </el-form-item>
-      <el-form-item label="所在桶">
-        <el-input v-model="queryLocal.bucket" style="width: 200px" />
-      </el-form-item>
-      <el-form-item label="时间范围">
-        <el-date-picker
-          v-model="timeRange"
-          type="datetimerange"
-          style="width: 350px"
-        />
-      </el-form-item>
-      <el-form-item label="ID">
-        <el-input v-model="queryLocal.id" style="width: 75px" />
-      </el-form-item>
+    <!-- 查询表单 -->
+    <el-form :inline="true" class="mb-3" label-width="70px" style="width: 100%">
+      <el-row :gutter="10">
+        <!-- 上传者 -->
+        <el-col :span="6">
+          <el-form-item label="上传者">
+            <el-input v-model="queryLocal.uploader" placeholder="输入上传者" />
+          </el-form-item>
+        </el-col>
 
-      <el-form-item style="margin-left: auto; display: flex; gap: 10px">
-        <el-select
-          v-model="selectedTags"
-          multiple
-          filterable
-          allow-create
-          collapse-tags
-          placeholder="选择或输入标签"
-          style="width: 300px"
-        >
-          <el-option
-            v-for="tag in allTags"
-            :key="tag.id"
-            :label="tag.name"
-            :value="tag.name"
-          />
-        </el-select>
+        <!-- 文件名 -->
+        <el-col :span="6">
+          <el-form-item label="文件名">
+            <el-input v-model="queryLocal.fileName" placeholder="输入文件名" />
+          </el-form-item>
+        </el-col>
+
+        <!-- 时间范围 -->
+        <el-col :span="8">
+          <el-form-item label="时间范围">
+            <el-date-picker
+              v-model="timeRange"
+              type="datetimerange"
+              style="width: 100%"
+            />
+          </el-form-item>
+        </el-col>
+
+        <!-- ID -->
+        <el-col :span="4">
+          <el-form-item label="ID">
+            <el-input v-model="queryLocal.id" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="10" style="margin-top: 10px">
+        <!-- 标签选择 -->
+        <el-col :span="10">
+          <el-form-item label="标签">
+            <el-select
+              v-model="selectedTags"
+              multiple
+              filterable
+              allow-create
+              placeholder="选择或输入标签"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="tag in allTags"
+                :key="tag.id"
+                :label="tag.name"
+                :value="tag.name"
+              />
+            </el-select>
+          </el-form-item>
+        </el-col>
 
         <!-- 匹配模式 -->
-        <el-checkbox v-model="tagMatchMode" true-label="all" false-label="any"
-          >全部匹配</el-checkbox
-        >
+        <el-col :span="4">
+          <el-checkbox
+            v-model="tagMatchMode"
+            true-label="all"
+            false-label="any"
+          >
+            全部匹配
+          </el-checkbox>
+        </el-col>
 
-        <el-button type="primary" @click="SetAllSelection">
-          勾选全部符合条件的 {{ totalCount }} 个对象
-        </el-button>
-        <el-button
-          type="warning"
-          @click="clearAllSelection"
-          :disabled="selectedIds.length === 0"
-        >
-          取消所有勾选
-        </el-button>
-        <el-button
-          @click="fetchFileList"
-          type="primary"
-          :loading="queryLoading"
-        >
-          查询
-        </el-button>
-        <el-button
-          type="success"
-          :disabled="selectedIds.length === 0"
-          @click="batchDownload"
-        >
-          批量下载选中文件 已选中 {{ selectedIds.length }} 个
-        </el-button>
-      </el-form-item>
+        <!-- 操作按钮 -->
+        <el-col :span="10" style="text-align: right">
+          <el-button type="primary" @click="SetAllSelection">
+            勾选全部 {{ totalCount }} 个
+          </el-button>
+          <el-button
+            type="warning"
+            @click="clearAllSelection"
+            :disabled="selectedIds.length === 0"
+          >
+            取消勾选
+          </el-button>
+          <el-button
+            @click="fetchFileList"
+            type="primary"
+            :loading="queryLoading"
+          >
+            查询
+          </el-button>
+          <el-button
+            type="success"
+            :disabled="selectedIds.length === 0"
+            @click="batchDownload"
+          >
+            批量下载 ({{ selectedIds.length }})
+          </el-button>
+        </el-col>
+      </el-row>
     </el-form>
 
     <!-- 文件表格 -->
@@ -89,92 +112,21 @@
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="originalFileName" label="文件名" />
       <el-table-column prop="fileSize" label="文件大小" />
-      <el-table-column prop="bucketname" label="所在桶的名称" />
       <el-table-column prop="uploader" label="上传者" />
       <el-table-column prop="uploadTime" label="上传时间" />
-      <el-table-column prop="eTag" label="ETag" />
       <el-table-column label="操作" width="180">
         <template #default="{ row }">
           <el-button type="primary" size="small" @click="downloadById(row.id)"
             >下载</el-button
           >
           <el-button @click="handlePreview(row.id, row.originalFileName)"
-            >预览文件</el-button
+            >预览</el-button
           >
         </template>
       </el-table-column>
     </el-table>
-    <!------------- 查询表单，包含勾选 下载等按钮 结束 --------------------->
 
-    <!--------预览文件区域 开始---------->
-    <el-dialog v-model="dialogVisible" width="80%" :before-close="closeDialog">
-      <!-- Office 文件 -->
-      <vue-office-docx
-        v-if="fileType === 'docx' && fileUrl"
-        :src="fileUrl"
-        style="height: 80vh; width: 100%"
-        @rendered="onRendered"
-        @error="onError"
-      />
-      <vue-office-pptx
-        v-if="fileType === 'pptx' && fileUrl"
-        :src="fileUrl"
-        style="height: 80vh; width: 100%"
-        @rendered="onRendered"
-        @error="onError"
-      />
-      <vue-office-excel
-        v-if="fileType === 'xlsx' && fileUrl"
-        :src="fileUrl"
-        style="height: 80vh; width: 100%"
-        @rendered="onRendered"
-        @error="onError"
-      />
-      <vue-office-pdf
-        v-if="fileType === 'pdf' && fileUrl"
-        :src="fileUrl"
-        style="height: 80vh; width: 100%"
-        @rendered="onRendered"
-        @error="onError"
-      />
-
-      <!-- 图片 -->
-      <img
-        v-if="
-          ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileType) &&
-          fileUrl
-        "
-        :src="fileUrl"
-        style="max-width: 100%; max-height: 80vh"
-      />
-
-      <!-- 视频 -->
-      <video
-        v-if="['mp4', 'webm', 'ogg'].includes(fileType) && fileUrl"
-        :src="fileUrl"
-        controls
-        style="max-width: 100%; max-height: 80vh"
-      ></video>
-
-      <!-- 文本 -->
-      <pre
-        v-if="['txt', 'csv', 'log'].includes(fileType)"
-        style="white-space: pre-wrap"
-        >{{ textContent }}</pre
-      >
-
-      <!-- Markdown -->
-      <div v-if="fileType === 'md'" v-html="renderedMarkdown"></div>
-
-      <!-- JSON -->
-      <pre v-if="fileType === 'json'">{{ formattedJson }}</pre>
-
-      <!-- 不支持 -->
-      <div v-if="fileType === 'unknown'">不支持预览此类型文件</div>
-    </el-dialog>
-    <!--------------预览文件区域 结束-------------->
-
-    <!------------------分页部分 开始------------------>
+    <!-- 分页 -->
     <div class="demo-pagination-block">
       <el-pagination
         v-model:current-page="currentPage"
@@ -187,9 +139,8 @@
         @current-change="handleCurrentChange"
       />
     </div>
-    <!-------------分页部分 结束---------------->
 
-    <!--------------- 返回顶部 开始 ------------>
+    <!-- 返回顶部 -->
     <el-backtop
       style="
         background-color: #409eff;
@@ -200,7 +151,6 @@
         font-size: 32px;
       "
     />
-    <!------------ 返回顶部 结束 ------------->
   </div>
 </template>
 
@@ -265,7 +215,7 @@ const props = defineProps({
   },
 });
 const emit = defineEmits(["update:query"]);
-const queryLocal = reactive({ ...props.query });
+const queryLocal = reactive({ uploader: "", fileName: "", id: "" });
 
 watch(
   () => props.query,
@@ -302,7 +252,8 @@ async function fetchFileList() {
     if (queryLocal.id) params.id = Number(queryLocal.id);
     if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
     if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
-    if (queryLocal.bucket) params.bucket = queryLocal.bucket.trim();
+    params.bucket = "my-bucket";
+
     if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
       params.start = new Date(timeRange.value[0]).toISOString();
       params.end = new Date(timeRange.value[1]).toISOString();
@@ -352,7 +303,7 @@ async function SetAllSelection() {
     if (queryLocal.id) params.id = Number(queryLocal.id);
     if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
     if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
-    if (queryLocal.bucket) params.bucket = queryLocal.bucket.trim();
+    params.bucket = "my-bucket"; //固定查询桶名
     if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
       params.start = new Date(timeRange.value[0]).toISOString();
       params.end = new Date(timeRange.value[1]).toISOString();

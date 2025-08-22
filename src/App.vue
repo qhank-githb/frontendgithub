@@ -1,59 +1,114 @@
 <template>
   <div>
-    <input v-model="JWTusername" placeholder="用户名" />
-    <input v-model="JWTpassword" type="password" placeholder="密码" />
-    <button @click="handleLogin">登录</button>
-  </div>
-  <el-card>
-    <h2>文件上传</h2>
-
-    <!-- UploadArea 保持不变：它会 emit upload-success -->
-    <upload-area
-      :username="username"
-      :bucket-options="bucketOptions"
-      v-model:selected-bucket="selectedBucket"
-      v-model:new-bucket="newBucket"
-      @upload-success="onUploadSuccess"
-    />
-
-    <el-divider />
-
-    <!-- 恢复上传结果展示表格 -->
-    <div style="margin-top: 12px">
-      <h3
-        style="
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        "
-      >
-        <span>上传结果（最近 {{ uploadResults.length }} 条）</span>
-        <small style="color: #888">最多显示 10 条</small>
-      </h3>
-
-      <el-table
-        :data="uploadResults"
-        style="width: 100%"
-        border
-        v-if="uploadResults.length > 0"
-      >
-        <el-table-column prop="originalFileName" label="文件名" />
-        <el-table-column prop="size" label="文件大小" />
-        <el-table-column prop="bucket" label="所在桶的名称" />
-        <el-table-column prop="eTag" label="ETag" />
-      </el-table>
-      <div v-else style="color: #999; padding: 12px 0">暂无上传记录</div>
+    <!-- 登录页面 -->
+    <div
+      v-if="!isLoggedIn"
+      style="
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      "
+    >
+      <el-card style="width: 300px; padding: 20px">
+        <h3 style="text-align: center; margin-bottom: 12px">登录</h3>
+        <el-input
+          v-model="JWTusername"
+          placeholder="用户名"
+          style="margin-bottom: 12px"
+        />
+        <el-input
+          v-model="JWTpassword"
+          placeholder="密码"
+          type="password"
+          style="margin-bottom: 12px"
+        />
+        <el-button type="primary" style="width: 100%" @click="handleLogin"
+          >登录</el-button
+        >
+      </el-card>
     </div>
 
-    <el-divider />
+    <!-- 主页面（菜单 + 内容） -->
+    <div v-else style="height: 100vh; display: flex; flex-direction: column">
+      <!-- 顶部菜单 -->
+      <el-menu
+        mode="horizontal"
+        :default-active="activeMenu"
+        @select="activeMenu = $event"
+        background-color="#409EFF"
+        text-color="#fff"
+        active-text-color="#fff "
+        style="height: 50px"
+      >
+        <el-menu-item index="upload">上传文件</el-menu-item>
+        <el-menu-item index="query">查询文件</el-menu-item>
+        <el-menu-item index="tags">标签管理</el-menu-item>
+      </el-menu>
 
-    <h2>文件查询与下载</h2>
-    <file-table
-      ref="fileTableRef"
-      :query="query"
-      @update:query="(val) => (query = val)"
-    />
-  </el-card>
+      <!-- 主体内容 -->
+      <el-container style="flex: 1; overflow: auto; padding: 12px">
+        <el-main style="display: flex; flex-direction: column; gap: 12px">
+          <!-- 上传组件 -->
+          <upload-area
+            v-show="activeMenu === 'upload'"
+            :username="username"
+            :bucket-options="bucketOptions"
+            v-model:selected-bucket="selectedBucket"
+            v-model:new-bucket="newBucket"
+            @upload-success="onUploadSuccess"
+          />
+
+          <!-- 上传结果表格 -->
+          <div v-show="activeMenu === 'upload'">
+            <h3
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+              "
+            >
+              <span>上传结果（最近 {{ uploadResults.length }} 条）</span>
+            </h3>
+
+            <el-table
+              :data="uploadResults"
+              style="width: 100%"
+              border
+              v-if="uploadResults.length > 0"
+            >
+              <el-table-column
+                prop="originalFileName"
+                label="文件名"
+                show-overflow-tooltip
+              />
+              <el-table-column prop="tags" label="标签" />
+              <el-table-column prop="size" label="文件大小" />
+              <el-table-column prop="username" label="上传者" />
+              <el-table-column
+                prop="uploadtime"
+                label="上传时间"
+                :formatter="
+                  (row) =>
+                    row.uploadtime ? row.uploadtime.toLocaleString() : ''
+                "
+              />
+            </el-table>
+            <div v-else style="color: #999; padding: 12px 0">暂无上传记录</div>
+          </div>
+
+          <!-- 查询组件 -->
+          <file-table
+            v-show="activeMenu === 'query'"
+            ref="fileTableRef"
+            :query="query"
+            @update:query="(val) => (query = val)"
+          />
+          <TagsPage v-show="activeMenu === 'tags'" />
+        </el-main>
+      </el-container>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -63,33 +118,42 @@ import FileTable from "./components/FileTable.vue";
 import { fetchBuckets } from "./api/files";
 import { ElMessage } from "element-plus";
 import { login } from "@/services/auth.js";
+import TagsPage from "./components/TagsPage.vue";
 
-const JWTpassword = ref("");
 const JWTusername = ref("");
+const JWTpassword = ref("");
+const isLoggedIn = ref(false); // 登录状态，测试其他功能，暂时默认为登录
+const activeMenu = ref("upload"); // 默认显示上传页
 
+// 上传组件绑定的数据
+const username = ref("bolo-vue-test");
+const bucketOptions = ref([]);
+const selectedBucket = ref("");
+const newBucket = ref("");
+
+// 查询组件绑定的数据
+const query = ref({ uploader: "", fileName: "", bucket: "", id: "" });
+const fileTableRef = ref(null);
+
+// 上传结果
+const uploadResults = ref([]);
+
+// 登录处理
 async function handleLogin() {
   try {
     const token = await login(JWTusername.value, JWTpassword.value);
     console.log("登录成功，Token:", token);
-    // 可以跳转页面或刷新文件列表
+    isLoggedIn.value = true;
+
+    // 登录成功后加载桶和刷新表格
+    await loadBuckets();
     fileTableRef.value?.fetchFileList?.();
   } catch (err) {
     alert("登录失败");
   }
 }
 
-const allTags = ref([]);
-const username = ref("bolo-vue-test");
-const bucketOptions = ref([]);
-const selectedBucket = ref("");
-const newBucket = ref("");
-
-// 恢复上传结果数组
-const uploadResults = ref([]); // 存放服务端返回的对象（或你需要展示的字段）
-const fileTableRef = ref(null);
-
-const query = ref({ uploader: "", fileName: "", bucket: "", id: "" });
-
+// 加载桶列表
 async function loadBuckets() {
   try {
     bucketOptions.value = await fetchBuckets();
@@ -98,60 +162,40 @@ async function loadBuckets() {
   }
 }
 
-onMounted(async () => {
-  await loadBuckets(); // 先加载桶
-  try {
-    const res = await fetch("/api/tags");
-    const data = await res.json();
-    allTags.value = data.map((t) => t.name); // 假设返回 [{id, name}, ...]
-  } catch (err) {
-    ElMessage.error("获取标签失败");
-    console.error(err);
-  }
-});
-
+// 上传成功回调
 function onUploadSuccess(payload) {
-  console.log("[App] upload-success payload:", payload);
-  if (!payload) return;
-
-  // 兼容 axios 的 res 或直接 res 的各种情况
-  let resData = null;
-  if (payload.res) {
-    resData = payload.res.data ?? payload.res;
-  } else {
-    resData = payload;
-  }
-
-  // 保守提取字段（注意这里用括号把 ?? 表达式包起来）
-  const fileName =
-    resData?.originalFileName ??
-    resData?.fileName ??
-    (payload.file && payload.file.name);
-  const size = resData?.size ?? (payload.file && payload.file.size);
-
-  // 下面这一行是重点：把 ?? 的部分放进括号，之后可以用 || 链接其他 fallback
-  const bucket =
-    (resData?.bucket ?? selectedBucket.value) ||
-    newBucket.value ||
-    resData?.bucketName ||
-    "";
-
-  const eTag =
-    resData?.eTag ?? resData?.etag ?? resData?.ETag ?? resData?.e_tag ?? "";
+  const resData = payload.res?.data ?? payload.res ?? payload;
+  console.log("uploadtime原始值", resData.uploadtime);
+  console.log("Date对象", new Date(resData.uploadtime));
 
   const item = {
-    originalFileName: fileName,
-    size,
-    bucket,
-    eTag,
-    _raw: resData,
+    originalFileName: resData?.originalFileName ?? resData?.fileName ?? "",
+    size: resData?.size ?? 0,
+    bucket: resData?.bucket ?? selectedBucket.value ?? newBucket.value ?? "",
+    eTag: resData?.eTag ?? "",
+    username: resData?.username ?? username.value,
+    tags: resData?.tags ?? [],
+    uploadtime: resData?.uploadtime ? new Date(resData.uploadtime) : null,
   };
 
   uploadResults.value.unshift(item);
-  if (uploadResults.value.length > 10) uploadResults.value.pop();
 
-  // 刷新桶 / 表格（按需）
   loadBuckets();
   fileTableRef.value?.fetchFileList?.();
 }
+
+onMounted(async () => {
+  // 如果需要记住登录状态，可在这里检查 token
+});
 </script>
+
+<style>
+.top-menu {
+  width: 100%;
+}
+
+.top-menu .el-menu-item {
+  min-width: 100px;
+  text-align: center;
+}
+</style>
