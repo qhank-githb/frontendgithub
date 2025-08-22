@@ -3,21 +3,16 @@
     <!-- 查询表单 -->
     <el-form :inline="true" class="mb-3" label-width="70px" style="width: 100%">
       <el-row :gutter="10">
-        <!-- 上传者 -->
         <el-col :span="6">
           <el-form-item label="上传者">
             <el-input v-model="queryLocal.uploader" placeholder="输入上传者" />
           </el-form-item>
         </el-col>
-
-        <!-- 文件名 -->
         <el-col :span="6">
           <el-form-item label="文件名">
             <el-input v-model="queryLocal.fileName" placeholder="输入文件名" />
           </el-form-item>
         </el-col>
-
-        <!-- 时间范围 -->
         <el-col :span="8">
           <el-form-item label="时间范围">
             <el-date-picker
@@ -27,8 +22,6 @@
             />
           </el-form-item>
         </el-col>
-
-        <!-- ID -->
         <el-col :span="4">
           <el-form-item label="ID">
             <el-input v-model="queryLocal.id" />
@@ -57,7 +50,6 @@
             </el-select>
           </el-form-item>
         </el-col>
-
         <!-- 匹配模式 -->
         <el-col :span="4">
           <el-checkbox
@@ -68,7 +60,6 @@
             全部匹配
           </el-checkbox>
         </el-col>
-
         <!-- 操作按钮 -->
         <el-col :span="10" style="text-align: right">
           <el-button type="primary" @click="SetAllSelection">
@@ -140,6 +131,62 @@
       />
     </div>
 
+    <!-- 文件预览 -->
+    <el-dialog v-model="dialogVisible" width="80%" :before-close="closeDialog">
+      <vue-office-docx
+        v-if="fileType === 'docx' && fileUrl"
+        :src="fileUrl"
+        style="height: 80vh; width: 100%"
+        @rendered="onRendered"
+        @error="onError"
+      />
+      <vue-office-pptx
+        v-if="fileType === 'pptx' && fileUrl"
+        :src="fileUrl"
+        style="height: 80vh; width: 100%"
+        @rendered="onRendered"
+        @error="onError"
+      />
+      <vue-office-excel
+        v-if="fileType === 'xlsx' && fileUrl"
+        :src="fileUrl"
+        style="height: 80vh; width: 100%"
+        @rendered="onRendered"
+        @error="onError"
+      />
+      <vue-office-pdf
+        v-if="fileType === 'pdf' && fileUrl"
+        :src="fileUrl"
+        style="height: 80vh; width: 100%"
+        @rendered="onRendered"
+        @error="onError"
+      />
+
+      <img
+        v-if="
+          ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileType) &&
+          fileUrl
+        "
+        :src="fileUrl"
+        style="max-width: 100%; max-height: 80vh"
+      />
+      <video
+        v-if="['mp4', 'webm', 'ogg'].includes(fileType) && fileUrl"
+        :src="fileUrl"
+        controls
+        style="max-width: 100%; max-height: 80vh"
+      ></video>
+      <pre
+        v-if="['txt', 'csv', 'log'].includes(fileType)"
+        style="white-space: pre-wrap"
+        >{{ textContent }}
+</pre
+      >
+      <div v-if="fileType === 'md'" v-html="renderedMarkdown"></div>
+      <pre v-if="fileType === 'json'">{{ formattedJson }}</pre>
+      <div v-if="fileType === 'unknown'">不支持预览此类型文件</div>
+    </el-dialog>
+
     <!-- 返回顶部 -->
     <el-backtop
       style="
@@ -155,7 +202,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, watch, onMounted } from "vue";
+import { ref, reactive, watch, nextTick, onMounted } from "vue";
 import axios from "axios";
 import * as filesApi from "@/api/files";
 import { ElLoading, ElMessage } from "element-plus";
@@ -165,9 +212,8 @@ import VueOfficePptx from "@vue-office/pptx";
 import VueOfficePdf from "@vue-office/pdf";
 import "@vue-office/docx/lib/index.css";
 import "@vue-office/excel/lib/index.css";
-import qs from "qs";
 import { useUniversalPreview } from "@/composables/useUniversalPreview";
-import { useTagQuery } from "@/composables/useTagQuery.js";
+import qs from "qs";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -175,9 +221,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).href;
 
-const apiBase = "http://192.168.150.93:5000/api"; // 后端地址
-//////////////预览开始
+const apiBase = "http://192.168.150.93:5000/api";
 
+// 预览相关
 const {
   dialogVisible,
   fileUrl,
@@ -189,23 +235,16 @@ const {
   onRendered,
   onError,
   closeDialog,
-} = useUniversalPreview("http://192.168.150.93:5000");
+} = useUniversalPreview(apiBase);
 
 function handlePreview(id, filename) {
   previewFileById(id, filename);
 }
-/////////////预览结束
 
-////////tag查询
-// --- 新增 tag 状态 ---
-const selectedTags = ref([]); // 多选标签
-const allTags = ref([]); // 可选的标签列表
-const tagMatchMode = ref("any"); // 'any' 或 'all'，checkbox 控制
-///////
-
-function onSelectionChange(selection) {
-  selectedIds.value = selection.map((item) => item.id);
-}
+// 标签相关
+const selectedTags = ref([]);
+const allTags = ref([]);
+const tagMatchMode = ref("any");
 
 // 查询表单绑定
 const props = defineProps({
@@ -215,8 +254,7 @@ const props = defineProps({
   },
 });
 const emit = defineEmits(["update:query"]);
-const queryLocal = reactive({ uploader: "", fileName: "", id: "" });
-
+const queryLocal = reactive({ ...props.query });
 watch(
   () => props.query,
   (v) => Object.assign(queryLocal, v),
@@ -231,79 +269,63 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 const queryLoading = ref(false);
 const timeRange = ref(null);
-
-// selection
 const selectedRowsMap = reactive(new Map());
 const selectedIds = ref([]);
 const multipleTable = ref(null);
 const isRestoringSelection = ref(false);
 const isPageChanging = ref(false);
 
-// 获取文件列表
+function onSelectionChange(selection) {
+  selection.forEach((r) => selectedRowsMap.set(r.id, r));
+  selectedIds.value = Array.from(selectedRowsMap.keys());
+}
+
+// 查询列表
 async function fetchFileList() {
   queryLoading.value = true;
   try {
-    const params = {
-      pageNumber: currentPage.value,
-      pageSize: pageSize.value,
-    };
-
-    // 基本查询条件
+    const params = { pageNumber: currentPage.value, pageSize: pageSize.value };
     if (queryLocal.id) params.id = Number(queryLocal.id);
     if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
     if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
-    params.bucket = "my-bucket";
-
     if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
       params.start = new Date(timeRange.value[0]).toISOString();
       params.end = new Date(timeRange.value[1]).toISOString();
     }
-
-    // 标签条件
     if (selectedTags.value.length > 0) {
       params.tags = [...selectedTags.value];
       params.matchAllTags = tagMatchMode.value === "all";
     }
-
-    console.log("fetchFileList params:", params);
-
     const res = await axios.get(`${apiBase}/filequery/query`, {
       params,
       headers: { Accept: "application/json" },
-      paramsSerializer: (params) =>
-        qs.stringify(params, { arrayFormat: "repeat" }),
+      paramsSerializer: (p) => qs.stringify(p, { arrayFormat: "repeat" }),
     });
-
     const data = res.data ?? {};
     files.value = data.items ?? [];
     totalCount.value = data.totalCount ?? files.value.length;
 
     await nextTick();
-
-    // 清空表格选中状态
     multipleTable.value?.clearSelection?.();
-
-    // 恢复已选中行
     selectedIds.value.forEach((id) => {
       const row = files.value.find((f) => f.id === id);
       if (row) multipleTable.value?.toggleRowSelection?.(row, true);
     });
   } catch (err) {
-    console.error("fetchFileList error:", err);
-    ElMessage.error("查询文件列表失败，请检查接口或网络");
+    console.error(err);
+    ElMessage.error("查询失败");
   } finally {
     queryLoading.value = false;
   }
 }
 
-// selection change
+// 全选
 async function SetAllSelection() {
   try {
     const params = {};
     if (queryLocal.id) params.id = Number(queryLocal.id);
     if (queryLocal.uploader) params.uploader = queryLocal.uploader.trim();
     if (queryLocal.fileName) params.fileName = queryLocal.fileName.trim();
-    params.bucket = "my-bucket"; //固定查询桶名
     if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
       params.start = new Date(timeRange.value[0]).toISOString();
       params.end = new Date(timeRange.value[1]).toISOString();
@@ -312,32 +334,24 @@ async function SetAllSelection() {
       params.tags = selectedTags.value;
       params.matchAllTags = tagMatchMode.value === "all";
     }
-
-    const res =
-      Object.keys(params).length === 0
-        ? await axios.get(`${apiBase}/filequery/query-ids`, {
-            responseType: "json",
-          })
-        : await axios.get(`${apiBase}/filequery/query-ids`, {
-            params,
-            responseType: "json",
-          });
-
+    const res = await axios.get(`${apiBase}/filequery/query-ids`, {
+      params,
+      responseType: "json",
+    });
     const allIds = res.data?.items ?? [];
-    allIds.forEach((id) => selectedRowsMap.set(String(id), { id }));
+    allIds.forEach((id) => selectedRowsMap.set(id, { id }));
     isRestoringSelection.value = true;
     multipleTable.value?.clearSelection?.();
     await nextTick();
     files.value.forEach((row) => {
-      if (selectedRowsMap.has(String(row.id)))
+      if (selectedRowsMap.has(row.id))
         multipleTable.value?.toggleRowSelection?.(row, true);
     });
     isRestoringSelection.value = false;
     selectedIds.value = Array.from(selectedRowsMap.keys());
-    ElMessage.success(`已选中所有符合条件的文件，共 ${allIds.length} 个`);
+    ElMessage.success(`已选中 ${allIds.length} 个文件`);
   } catch (err) {
     console.error(err);
-    isRestoringSelection.value = false;
     ElMessage.error("全选失败");
   }
 }
@@ -345,12 +359,10 @@ async function SetAllSelection() {
 // 清空选择
 function clearAllSelection() {
   isRestoringSelection.value = true;
-  isPageChanging.value = true;
   multipleTable.value?.clearSelection?.();
   selectedRowsMap.clear();
   selectedIds.value = [];
   isRestoringSelection.value = false;
-  isPageChanging.value = false;
 }
 
 // 下载
@@ -380,15 +392,10 @@ async function downloadById(id) {
 
 // 批量下载
 async function batchDownload() {
-  if (selectedIds.value.length === 0) {
-    ElMessage.warning("请先选择要下载的文件");
-    return;
-  }
+  if (!selectedIds.value.length) return ElMessage.warning("请先选择文件");
   const loading = ElLoading.service({ text: "正在下载..." });
   try {
-    const idsToSend = selectedIds.value.map(Number).filter((n) => !isNaN(n));
-    if (idsToSend.length === 0) return ElMessage.error("没有有效 ID");
-    const res = await filesApi.batchDownload(idsToSend);
+    const res = await filesApi.batchDownload(selectedIds.value);
     const blob = new Blob([res.data], { type: "application/zip" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -407,12 +414,10 @@ async function batchDownload() {
 function handleSizeChange(val) {
   pageSize.value = val;
   currentPage.value = 1;
-  isPageChanging.value = true;
   fetchFileList();
 }
 function handleCurrentChange(val) {
   currentPage.value = val;
-  isPageChanging.value = true;
   fetchFileList();
 }
 
@@ -420,13 +425,12 @@ function handleCurrentChange(val) {
 onMounted(async () => {
   fetchFileList();
   try {
-    const res = await axios.get("http://192.168.150.93:5000/api/tags");
-    allTags.value = res.data;
+    const res = await axios.get(`${apiBase}/tags`);
+    allTags.value = res.data ?? [];
   } catch (err) {
     console.error("加载标签失败", err);
   }
 });
-defineExpose({ fetchFileList });
 </script>
 
 <style scoped>
@@ -434,9 +438,5 @@ defineExpose({ fetchFileList });
   display: flex;
   justify-content: center;
   padding: 12px 0;
-}
-.preview-box {
-  width: 100%;
-  text-align: center;
 }
 </style>

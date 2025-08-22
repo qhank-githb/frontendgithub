@@ -104,7 +104,9 @@
             :query="query"
             @update:query="(val) => (query = val)"
           />
-          <TagsPage v-show="activeMenu === 'tags'" />
+
+          <!-- 标签管理组件 -->
+          <TagsPage v-show="activeMenu === 'tags'" ref="tagsPageRef" />
         </el-main>
       </el-container>
     </div>
@@ -112,30 +114,28 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, watch, onMounted } from "vue";
 import UploadArea from "./components/UploadArea.vue";
 import FileTable from "./components/FileTable.vue";
+import TagsPage from "./components/TagsPage.vue";
 import { fetchBuckets } from "./api/files";
 import { ElMessage } from "element-plus";
 import { login } from "@/services/auth.js";
-import TagsPage from "./components/TagsPage.vue";
 
 const JWTusername = ref("");
 const JWTpassword = ref("");
-const isLoggedIn = ref(false); // 登录状态，测试其他功能，暂时默认为登录
-const activeMenu = ref("upload"); // 默认显示上传页
+const isLoggedIn = ref(false);
+const activeMenu = ref("upload");
 
-// 上传组件绑定的数据
 const username = ref("bolo-vue-test");
 const bucketOptions = ref([]);
 const selectedBucket = ref("");
 const newBucket = ref("");
 
-// 查询组件绑定的数据
 const query = ref({ uploader: "", fileName: "", bucket: "", id: "" });
 const fileTableRef = ref(null);
+const tagsPageRef = ref(null); // 标签页 ref
 
-// 上传结果
 const uploadResults = ref([]);
 
 // 登录处理
@@ -145,7 +145,6 @@ async function handleLogin() {
     console.log("登录成功，Token:", token);
     isLoggedIn.value = true;
 
-    // 登录成功后加载桶和刷新表格
     await loadBuckets();
     fileTableRef.value?.fetchFileList?.();
   } catch (err) {
@@ -165,9 +164,6 @@ async function loadBuckets() {
 // 上传成功回调
 function onUploadSuccess(payload) {
   const resData = payload.res?.data ?? payload.res ?? payload;
-  console.log("uploadtime原始值", resData.uploadtime);
-  console.log("Date对象", new Date(resData.uploadtime));
-
   const item = {
     originalFileName: resData?.originalFileName ?? resData?.fileName ?? "",
     size: resData?.size ?? 0,
@@ -177,15 +173,22 @@ function onUploadSuccess(payload) {
     tags: resData?.tags ?? [],
     uploadtime: resData?.uploadtime ? new Date(resData.uploadtime) : null,
   };
-
   uploadResults.value.unshift(item);
 
   loadBuckets();
   fileTableRef.value?.fetchFileList?.();
 }
 
+// 🔹监听菜单切换，刷新标签页
+watch(activeMenu, (val) => {
+  if (val === "tags") {
+    tagsPageRef.value?.fetchAllTags?.();
+    tagsPageRef.value?.fetchFilesByTagsPage?.();
+  }
+});
+
 onMounted(async () => {
-  // 如果需要记住登录状态，可在这里检查 token
+  // 可在这里检查 token 或加载桶
 });
 </script>
 

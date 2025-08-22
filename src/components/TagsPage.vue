@@ -67,14 +67,13 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from "vue";
+import { ref, nextTick, onMounted, onActivated } from "vue";
 import axios from "axios";
 import qs from "qs";
 import { ElMessage } from "element-plus";
 
-const apiBase = "http://192.168.150.93:5000/api"; // 替换成你的接口前缀
+const apiBase = "http://192.168.150.93:5000/api";
 
-// 标签 & 文件状态
 const allTags = ref([]);
 const selectedTags = ref([]);
 const files = ref([]);
@@ -84,14 +83,12 @@ const queryLoading = ref(false);
 const currentPage = ref(1);
 const pageSize = ref(10);
 const totalCount = ref(0);
-const tagMatchMode = ref("all"); // "all" 或 "any"
+const tagMatchMode = ref("all");
 
-// 表格多选
 function handleSelectionChange(selection) {
   selectedIds.value = selection.map((item) => item.id);
 }
 
-// 获取标签列表
 async function fetchAllTags() {
   try {
     const res = await axios.get(`${apiBase}/tags`);
@@ -101,7 +98,6 @@ async function fetchAllTags() {
   }
 }
 
-// 按标签查询文件（分页）
 async function fetchFilesByTagsPage() {
   queryLoading.value = true;
   try {
@@ -129,8 +125,6 @@ async function fetchFilesByTagsPage() {
 
     await nextTick();
     multipleTable.value?.clearSelection?.();
-
-    // 恢复已选中行
     selectedIds.value.forEach((id) => {
       const row = files.value.find((f) => f.id === id);
       if (row) multipleTable.value?.toggleRowSelection?.(row, true);
@@ -143,8 +137,14 @@ async function fetchFilesByTagsPage() {
   }
 }
 
-// 页面初始化
+// 页面首次加载
 onMounted(async () => {
+  await fetchAllTags();
+  fetchFilesByTagsPage();
+});
+
+// 如果页面使用了 <keep-alive>，每次激活时也刷新
+onActivated(async () => {
   await fetchAllTags();
   fetchFilesByTagsPage();
 });

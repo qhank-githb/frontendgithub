@@ -37,12 +37,9 @@ export function useUniversalPreview(baseUrl = "http://192.168.150.93:5000") {
 
     try {
       const isText = ["txt", "csv", "log", "md", "json"].includes(ext);
-      const res = await axios.get(
-        `${baseUrl}/api/file/preview-by-id?id=${id}`,
-        {
-          responseType: isText ? "text" : "blob",
-        }
-      );
+      const res = await axios.get(`${baseUrl}/file/preview-by-id?id=${id}`, {
+        responseType: isText ? "text" : "blob",
+      });
 
       if (["txt", "csv", "log"].includes(ext)) {
         textContent.value = res.data;
