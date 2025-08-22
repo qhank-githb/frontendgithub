@@ -39,9 +39,18 @@
         >
           <el-table-column type="selection" width="55" />
           <el-table-column prop="originalFileName" label="文件名" />
-          <el-table-column prop="bucketname" label="桶名" />
           <el-table-column prop="uploadTime" label="上传时间" />
           <el-table-column prop="uploader" label="上传者" />
+
+          <!-- 新增标签列 -->
+          <el-table-column label="标签">
+            <template #default="{ row }">
+              <span v-if="row.tags && row.tags.length">
+                {{ row.tags.join(", ") }}
+              </span>
+              <span v-else>—</span>
+            </template>
+          </el-table-column>
         </el-table>
 
         <el-pagination
