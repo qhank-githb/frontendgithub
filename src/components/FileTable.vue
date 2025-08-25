@@ -105,17 +105,51 @@
       <el-table-column prop="fileSize" label="文件大小" />
       <el-table-column prop="uploader" label="上传者" />
       <el-table-column prop="uploadTime" label="上传时间" />
-      <el-table-column label="操作" width="180">
+      <el-table-column label="操作" width="200">
         <template #default="{ row }">
           <el-button type="primary" size="small" @click="downloadById(row.id)"
             >下载</el-button
           >
-          <el-button @click="handlePreview(row.id, row.originalFileName)"
+          <el-button
+            type="primary"
+            size="small"
+            @click="handlePreview(row.id, row.originalFileName)"
             >预览</el-button
+          >
+          <el-button type="primary" size="small" @click="openEdit(row)"
+            >编辑</el-button
           >
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 编辑弹窗 -->
+    <el-dialog v-model="editDialogVisible" title="编辑文件信息" width="500px">
+      <el-form :model="editForm" label-width="80px">
+        <!-- 文件名 -->
+        <el-form-item label="文件名">
+          <el-input v-model="editForm.fileName" />
+        </el-form-item>
+
+        <!-- 标签 -->
+        <el-form-item label="标签">
+          <el-select v-model="editForm.tags" multiple placeholder="选择标签">
+            <el-option
+              v-for="tag in allTags"
+              :key="tag.id"
+              :label="tag.name"
+              :value="tag.name"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+
+      <!-- 弹窗底部 -->
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveEdit">保存</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 分页 -->
     <div class="demo-pagination-block">
@@ -215,6 +249,7 @@ import "@vue-office/excel/lib/index.css";
 import { useUniversalPreview } from "@/composables/useUniversalPreview";
 import qs from "qs";
 import * as pdfjsLib from "pdfjs-dist";
+import { editFile } from "../api/files";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.js",
@@ -274,6 +309,46 @@ const selectedIds = ref([]);
 const multipleTable = ref(null);
 const isRestoringSelection = ref(false);
 const isPageChanging = ref(false);
+const editForm = ref({ id: null, fileName: "", tags: [] });
+
+const fileList = ref([]);
+
+const editDialogVisible = ref(false);
+// 打开弹窗
+function openEdit(row) {
+  // 复制当前行的数据到编辑表单
+  editForm.value = {
+    id: row.id,
+    fileName: row.originalFileName,
+    tags: [...row.tags],
+  };
+  editDialogVisible.value = true;
+}
+
+async function saveEdit() {
+  try {
+    // 调用接口
+    await editFile({
+      id: editForm.value.id,
+      fileName: editForm.value.fileName,
+      tags: editForm.value.tags,
+    });
+
+    // 更新本地表格数据
+    const idx = fileList.value.findIndex((f) => f.id === editForm.value.id);
+    if (idx !== -1) {
+      fileList.value[idx].originalFileName = editForm.value.fileName;
+      fileList.value[idx].tags = [...editForm.value.tags];
+    }
+
+    ElMessage.success("修改成功");
+    editDialogVisible.value = false;
+  } catch (err) {
+    ElMessage.error(
+      "修改失败：" + (err.response?.data?.message || err.message)
+    );
+  }
+}
 
 function onSelectionChange(selection) {
   selection.forEach((r) => selectedRowsMap.set(r.id, r));

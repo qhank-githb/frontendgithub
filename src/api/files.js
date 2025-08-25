@@ -24,3 +24,9 @@ export async function downloadById(id) {
 export async function batchDownload(ids) {
   return http.post("/file/batch-download", ids, { responseType: "blob" });
 }
+// 编辑文件信息
+export async function editFile(data) {
+  // data = { id, fileName, tags }
+  const res = await http.post("http://192.168.150.93:5000/api/tags/edit", data);
+  return res.data;
+}
