@@ -44,6 +44,12 @@
         <el-menu-item index="upload">上传文件</el-menu-item>
         <el-menu-item index="query">查询文件</el-menu-item>
         <el-menu-item index="tags">标签管理</el-menu-item>
+        <el-button
+          type="warning"
+          style="margin-right: 20px"
+          @click="handleLogout"
+          >退出</el-button
+        >
       </el-menu>
 
       <!-- 主体内容 -->
@@ -120,7 +126,9 @@ import FileTable from "./components/FileTable.vue";
 import TagsPage from "./components/TagsPage.vue";
 import { fetchBuckets } from "./api/files";
 import { ElMessage } from "element-plus";
-import { login } from "@/services/auth.js";
+import { login } from "./services/auth";
+import { startHeartbeat, stopHeartbeat } from "./services/heartbeat";
+import axios from "axios";
 
 const JWTusername = ref("");
 const JWTpassword = ref("");
@@ -141,15 +149,41 @@ const uploadResults = ref([]);
 // 登录处理
 async function handleLogin() {
   try {
-    const token = await login(JWTusername.value, JWTpassword.value);
-    console.log("登录成功，Token:", token);
-    isLoggedIn.value = true;
+    const res = await axios.post("/api/auth/login", {
+      username: JWTusername.value,
+      password: JWTpassword.value,
+    });
+    console.log("axios response:", res);
 
-    await loadBuckets();
-    fileTableRef.value?.fetchFileList?.();
+    const token = res.data.token;
+    if (!token) {
+      alert("登录失败：没有拿到 token");
+      return;
+    }
+
+    // 保存 token
+    localStorage.setItem("jwt_token", token);
+    isLoggedIn.value = true;
+    console.log("登录成功，Token:", token);
   } catch (err) {
-    alert("登录失败");
+    console.error("登录失败:", err);
+    alert("登录失败：" + err.message);
   }
+}
+
+async function handleLogout() {
+  stopHeartbeat(); // 停止心跳
+  delete axios.defaults.headers.common["Authorization"];
+  isLoggedIn.value = false;
+
+  try {
+    await axios.post("http://192.168.150.93:5000/api/auth/logout");
+    console.log("已通知后端用户退出");
+  } catch (err) {
+    console.warn("退出日志通知后端失败:", err);
+  }
+
+  localStorage.removeItem("jwt_token"); // 可选：清理本地 token
 }
 
 // 加载桶列表

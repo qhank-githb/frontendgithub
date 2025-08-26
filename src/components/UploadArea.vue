@@ -42,6 +42,7 @@
         drag
         class="my-upload-area"
         :action="uploadAction"
+        :headers="{ Authorization: `Bearer ${token}` }"
         :data="uploadData"
         :before-upload="handleBeforeUpload"
         :on-progress="handleUploadProgress"
@@ -66,6 +67,12 @@ import axios from "axios";
 import { useUpload } from "@/composables/useUpload";
 import { handleCreateTag } from "@/composables/useTagCreate";
 import { useTagSelector } from "@/composables/useTagSelector";
+
+const token = ref("");
+
+onMounted(() => {
+  token.value = localStorage.getItem("jwt_token") || "";
+});
 
 const props = defineProps({
   username: { type: String, default: "" },

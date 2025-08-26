@@ -1,17 +1,35 @@
-// axios 单例
 import axios from "axios";
+import { ElMessage } from "element-plus";
 
 const API_BASE = "http://192.168.150.93:5000/api";
 
 const http = axios.create({
   baseURL: API_BASE,
   timeout: 60000,
-  withCredentials: false,
 });
 
+// 请求拦截器：自动加 JWT
+http.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("jwt_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+axios.defaults.baseURL = "http://192.168.150.93:5000"; // 改成你的后端 IP+端口
+
+// 响应拦截器：统一处理 401
 http.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (err.response?.status === 401) {
+      ElMessage.error("未授权，请重新登录");
+      // 可选：跳转登录页
+    }
     return Promise.reject(err);
   }
 );
