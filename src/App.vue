@@ -126,8 +126,6 @@ import FileTable from "./components/FileTable.vue";
 import TagsPage from "./components/TagsPage.vue";
 import { fetchBuckets } from "./api/files";
 import { ElMessage } from "element-plus";
-import { login } from "./services/auth";
-import { startHeartbeat, stopHeartbeat } from "./services/heartbeat";
 import axios from "axios";
 
 const JWTusername = ref("");
@@ -153,7 +151,6 @@ async function handleLogin() {
       username: JWTusername.value,
       password: JWTpassword.value,
     });
-    console.log("axios response:", res);
 
     const token = res.data.token;
     if (!token) {
@@ -161,8 +158,13 @@ async function handleLogin() {
       return;
     }
 
-    // 保存 token
+    // 保存 token 并设置全局 header
     localStorage.setItem("jwt_token", token);
+    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    username.value = JWTusername.value;
+
+    // 登录成功后启动心跳
+
     isLoggedIn.value = true;
     console.log("登录成功，Token:", token);
   } catch (err) {
@@ -172,7 +174,6 @@ async function handleLogin() {
 }
 
 async function handleLogout() {
-  stopHeartbeat(); // 停止心跳
   delete axios.defaults.headers.common["Authorization"];
   isLoggedIn.value = false;
 
