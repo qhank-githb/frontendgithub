@@ -496,6 +496,10 @@ function handleCurrentChange(val) {
   fetchFileList();
 }
 
+defineExpose({
+  fetchFileList,
+});
+
 // 初次加载
 onMounted(async () => {
   fetchFileList();

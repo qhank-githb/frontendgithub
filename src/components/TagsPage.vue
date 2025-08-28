@@ -137,6 +137,11 @@ async function fetchFilesByTagsPage() {
   }
 }
 
+defineExpose({
+  fetchAllTags,
+  fetchFilesByTagsPage,
+});
+
 // 页面首次加载
 onMounted(async () => {
   await fetchAllTags();

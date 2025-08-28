@@ -219,6 +219,8 @@ watch(activeMenu, (val) => {
   if (val === "tags") {
     tagsPageRef.value?.fetchAllTags?.();
     tagsPageRef.value?.fetchFilesByTagsPage?.();
+  } else if (val === "query") {
+    fileTableRef.value?.fetchFileList?.(); // 调用查询组件的刷新方法
   }
 });
 
