@@ -32,25 +32,37 @@
     <!-- 主页面（菜单 + 内容） -->
     <div v-else style="height: 100vh; display: flex; flex-direction: column">
       <!-- 顶部菜单 -->
-      <el-menu
-        mode="horizontal"
-        :default-active="activeMenu"
-        @select="activeMenu = $event"
-        background-color="#409EFF"
-        text-color="#fff"
-        active-text-color="#fff "
-        style="height: 50px"
-      >
-        <el-menu-item index="upload">上传文件</el-menu-item>
-        <el-menu-item index="query">查询文件</el-menu-item>
-        <el-menu-item index="tags">标签管理</el-menu-item>
+      <!-- 顶部菜单 -->
+      <div style="display: flex; align-items: center; padding: 0 16px">
+        <!-- 菜单部分 -->
+        <el-menu
+          mode="horizontal"
+          :default-active="activeMenu"
+          @select="activeMenu = $event"
+          background-color="transparent"
+          text-color="#333333"
+          active-text-color="#64B5F6"
+          style="flex: 1"
+        >
+          <el-menu-item index="upload">上传文件</el-menu-item>
+          <el-menu-item index="query">查询文件</el-menu-item>
+          <el-menu-item index="tags">标签管理</el-menu-item>
+        </el-menu>
+
+        <!-- 退出按钮靠右 -->
         <el-button
           type="warning"
-          style="margin-right: 20px"
           @click="handleLogout"
-          >退出</el-button
+          style="
+            background-color: #ffb74d;
+            border: none;
+            color: #fff;
+            margin-left: 16px;
+          "
         >
-      </el-menu>
+          退出
+        </el-button>
+      </div>
 
       <!-- 主体内容 -->
       <el-container style="flex: 1; overflow: auto; padding: 12px">
