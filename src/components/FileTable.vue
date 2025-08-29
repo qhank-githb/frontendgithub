@@ -237,7 +237,8 @@
 
 <script setup>
 import { ref, reactive, watch, nextTick, onMounted } from "vue";
-import axios from "axios";
+import http from "@/plugins/axios";
+import { API_BASE } from "@/plugins/axios";
 import * as filesApi from "@/api/files";
 import { ElLoading, ElMessage } from "element-plus";
 import VueOfficeDocx from "@vue-office/docx";
@@ -371,7 +372,7 @@ async function fetchFileList() {
       params.tags = [...selectedTags.value];
       params.matchAllTags = tagMatchMode.value === "all";
     }
-    const res = await axios.get(`${apiBase}/filequery/query`, {
+    const res = await http.get(`${apiBase}/filequery/query`, {
       params,
       headers: { Accept: "application/json" },
       paramsSerializer: (p) => qs.stringify(p, { arrayFormat: "repeat" }),
@@ -409,7 +410,7 @@ async function SetAllSelection() {
       params.tags = selectedTags.value;
       params.matchAllTags = tagMatchMode.value === "all";
     }
-    const res = await axios.get(`${apiBase}/filequery/query-ids`, {
+    const res = await http.get(`${apiBase}/filequery/query-ids`, {
       params,
       responseType: "json",
     });
@@ -504,7 +505,7 @@ defineExpose({
 onMounted(async () => {
   fetchFileList();
   try {
-    const res = await axios.get(`${apiBase}/tags`);
+    const res = await http.get("/tags"); // 使用http实例
     allTags.value = res.data ?? [];
   } catch (err) {
     console.error("加载标签失败", err);

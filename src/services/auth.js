@@ -1,9 +1,10 @@
 // src/services/auth.js
-import axios from "axios";
+import http from "@/plugins/axios";
 
 export async function login(username, password) {
   try {
-    const res = await axios.post("http://192.168.150.93:5000/api/auth/login", {
+    const res = await http.post("/auth/login", {
+      // 使用相对路径
       username,
       password,
     });

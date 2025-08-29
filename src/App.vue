@@ -54,7 +54,7 @@
           type="warning"
           @click="handleLogout"
           style="
-            background-color: #ffb74d;
+            background-color: #ff9900ff;
             border: none;
             color: #fff;
             margin-left: 16px;
@@ -138,7 +138,7 @@ import FileTable from "./components/FileTable.vue";
 import TagsPage from "./components/TagsPage.vue";
 import { fetchBuckets } from "./api/files";
 import { ElMessage } from "element-plus";
-import axios from "axios";
+import http from "@/plugins/axios";
 
 const JWTusername = ref("");
 const JWTpassword = ref("");
@@ -159,7 +159,8 @@ const uploadResults = ref([]);
 // 登录处理
 async function handleLogin() {
   try {
-    const res = await axios.post("/api/auth/login", {
+    const res = await http.post("/auth/login", {
+      // 使用http实例
       username: JWTusername.value,
       password: JWTpassword.value,
     });
@@ -170,12 +171,9 @@ async function handleLogin() {
       return;
     }
 
-    // 保存 token 并设置全局 header
+    // 保存 token（http实例会自动在请求拦截器中添加token）
     localStorage.setItem("jwt_token", token);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     username.value = JWTusername.value;
-
-    // 登录成功后启动心跳
 
     isLoggedIn.value = true;
     console.log("登录成功，Token:", token);
@@ -186,11 +184,11 @@ async function handleLogin() {
 }
 
 async function handleLogout() {
-  delete axios.defaults.headers.common["Authorization"];
+  delete http.defaults.headers.common["Authorization"];
   isLoggedIn.value = false;
 
   try {
-    await axios.post("http://192.168.150.93:5000/api/auth/logout");
+    await http.post("http://192.168.150.93:5000/api/auth/logout");
     console.log("已通知后端用户退出");
   } catch (err) {
     console.warn("退出日志通知后端失败:", err);

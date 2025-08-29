@@ -68,7 +68,7 @@
 
 <script setup>
 import { ref, nextTick, onMounted, onActivated } from "vue";
-import axios from "axios";
+import http from "@/plugins/axios";
 import qs from "qs";
 import { ElMessage } from "element-plus";
 
@@ -91,7 +91,7 @@ function handleSelectionChange(selection) {
 
 async function fetchAllTags() {
   try {
-    const res = await axios.get(`${apiBase}/tags`);
+    const res = await http.get("/tags");
     allTags.value = Array.isArray(res.data) ? res.data : [];
   } catch (err) {
     console.error("fetchAllTags error:", err);
@@ -112,7 +112,7 @@ async function fetchFilesByTagsPage() {
       params.matchAllTags = tagMatchMode.value === "all";
     }
 
-    const res = await axios.get(`${apiBase}/filequery/query`, {
+    const res = await http.get("/filequery/query", {
       params,
       headers: { Accept: "application/json" },
       paramsSerializer: (params) =>

@@ -63,7 +63,8 @@
 <script setup>
 import { computed, ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
-import axios from "axios";
+import http from "@/plugins/axios";
+import { API_BASE } from "@/plugins/axios";
 import { useUpload } from "@/composables/useUpload";
 import { handleCreateTag } from "@/composables/useTagCreate";
 import { useTagSelector } from "@/composables/useTagSelector";
@@ -96,7 +97,7 @@ const newTagInput = ref("");
 // 获取标签列表
 async function fetchTags() {
   try {
-    const res = await axios.get("http://192.168.150.93:5000/api/tags");
+    const res = await http.get("/tags"); // 使用http实例和相对路径
     if (Array.isArray(res.data)) {
       allTags.value =
         typeof res.data[0] === "string"
@@ -109,7 +110,6 @@ async function fetchTags() {
     console.error("获取标签失败", err);
   }
 }
-
 onMounted(fetchTags);
 
 function onTagSelected(tag) {
@@ -144,8 +144,9 @@ const usernameLocal = computed({
 });
 
 // 上传地址固定 my-bucket
+// 上传地址
 const uploadAction = computed(
-  () => "http://192.168.150.93:5000/api/my-bucket/fileupload/upload"
+  () => `${API_BASE}/my-bucket/fileupload/upload` // 使用API_BASE
 );
 
 // 上传数据

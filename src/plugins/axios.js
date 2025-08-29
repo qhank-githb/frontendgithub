@@ -20,8 +20,6 @@ http.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-axios.defaults.baseURL = "http://192.168.150.93:5000"; // 改成你的后端 IP+端口
-
 // 响应拦截器：统一处理 401
 http.interceptors.response.use(
   (res) => res,

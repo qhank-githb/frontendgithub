@@ -1,4 +1,4 @@
-import axios from "axios";
+import http from "@/plugins/axios";
 import { ElMessage } from "element-plus";
 
 /**
@@ -8,12 +8,11 @@ import { ElMessage } from "element-plus";
  * @param {Array} selectedTags - ref数组，保存已选标签
  */
 export async function handleCreateTag(newTag) {
-  const url = "http://192.168.150.93:5000/api/tags";
   if (!newTag?.trim()) throw new Error("标签名不能为空");
 
   try {
     // 方法 1: JSON 对象
-    const res = await axios.post(url, { name: newTag });
+    const res = await http.post("/tags", { name: newTag }); // 使用相对路径
     return res.data;
   } catch (err) {
     console.error("创建失败（JSON方式）", err.response?.data || err);
@@ -21,14 +20,16 @@ export async function handleCreateTag(newTag) {
       // 方法 2: FormData
       const form = new FormData();
       form.append("name", newTag);
-      const res2 = await axios.post(url, form, {
+      const res2 = await http.post("/tags", form, {
+        // 使用相对路径
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res2.data;
     } catch (err2) {
       console.error("创建失败（FormData方式）", err2.response?.data || err2);
       // 方法 3: 原始 JSON 字符串
-      const res3 = await axios.post(url, JSON.stringify(newTag), {
+      const res3 = await http.post("/tags", JSON.stringify(newTag), {
+        // 使用相对路径
         headers: { "Content-Type": "application/json" },
       });
       return res3.data;

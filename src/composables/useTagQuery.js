@@ -1,7 +1,7 @@
 import { ref } from "vue";
-import axios from "axios";
+import http from "@/plugins/axios";
 
-export function useTagQuery(apiBase = "/api/file") {
+export function useTagQuery(apiBase = "/file") {
   const selectedTags = ref([]);
   const matchAll = ref(false);
   const files = ref([]);
@@ -16,7 +16,7 @@ export function useTagQuery(apiBase = "/api/file") {
       ...extraParams,
     };
     try {
-      const res = await axios.get(`${apiBase}/query`, { params });
+      const res = await http.get(`${apiBase}/query`, { params }); // 使用相对路径
       files.value = res.data.items;
       totalCount.value = res.data.totalCount;
     } catch (err) {

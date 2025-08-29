@@ -1,4 +1,4 @@
-import axios from "axios";
+import http from "@/plugins/axios";
 
 let heartbeatInterval = null;
 
@@ -6,8 +6,8 @@ export function startHeartbeat(intervalMs = 10000) {
   if (heartbeatInterval) return;
 
   heartbeatInterval = setInterval(() => {
-    axios
-      .post("/api/heartbeat/ping")
+    http
+      .post("/heartbeat/ping") // 使用相对路径
       .then(() => {
         console.log("Heartbeat sent");
       })

@@ -1,11 +1,11 @@
 // useUniversalPreview.js
 import { ref } from "vue";
-import axios from "axios";
+import http from "@/plugins/axios";
+import { API_BASE } from "@/plugins/axios";
 import { marked } from "marked"; // markdown 解析
 
-// vue-office 组件
-
-export function useUniversalPreview(baseUrl = "http://192.168.150.93:5000") {
+export function useUniversalPreview() {
+  // 移除硬编码baseUrl，使用API_BASE
   const dialogVisible = ref(false);
   const fileUrl = ref(null);
   const fileType = ref(null);
@@ -37,7 +37,9 @@ export function useUniversalPreview(baseUrl = "http://192.168.150.93:5000") {
 
     try {
       const isText = ["txt", "csv", "log", "md", "json"].includes(ext);
-      const res = await axios.get(`${baseUrl}/file/preview-by-id?id=${id}`, {
+      const res = await http.get("/file/preview-by-id", {
+        // 使用相对路径
+        params: { id },
         responseType: isText ? "text" : "blob",
       });
 
