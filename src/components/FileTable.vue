@@ -257,8 +257,6 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).href;
 
-const apiBase = "http://192.168.150.93:5000/api";
-
 // 预览相关
 const {
   dialogVisible,
@@ -271,7 +269,7 @@ const {
   onRendered,
   onError,
   closeDialog,
-} = useUniversalPreview(apiBase);
+} = useUniversalPreview(API_BASE);
 
 function handlePreview(id, filename) {
   previewFileById(id, filename);
@@ -372,7 +370,7 @@ async function fetchFileList() {
       params.tags = [...selectedTags.value];
       params.matchAllTags = tagMatchMode.value === "all";
     }
-    const res = await http.get(`${apiBase}/filequery/query`, {
+    const res = await http.get(`${API_BASE}/filequery/query`, {
       params,
       headers: { Accept: "application/json" },
       paramsSerializer: (p) => qs.stringify(p, { arrayFormat: "repeat" }),
@@ -410,7 +408,7 @@ async function SetAllSelection() {
       params.tags = selectedTags.value;
       params.matchAllTags = tagMatchMode.value === "all";
     }
-    const res = await http.get(`${apiBase}/filequery/query-ids`, {
+    const res = await http.get(`${API_BASE}/filequery/query-ids`, {
       params,
       responseType: "json",
     });

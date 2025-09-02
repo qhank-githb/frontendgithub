@@ -2,9 +2,9 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import ElementPlus from "element-plus";
 import "element-plus/dist/index.css";
+import http from "@/plugins/axios";
 
 const app = createApp(App);
 
 app.use(ElementPlus);
 app.mount("#app");
-//test 9.1 16.47

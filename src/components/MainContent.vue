@@ -137,6 +137,7 @@ import { fetchBuckets } from "../api/files";
 import { ElMessage } from "element-plus";
 import axios from "axios";
 import { login } from "../services/auth"; // 引入登录API
+import { API_BASE } from "@/plugins/axios";
 
 // 登录相关状态
 const JWTusername = ref("");
@@ -183,7 +184,7 @@ async function handleLogout() {
   JWTpassword.value = "";
 
   try {
-    await axios.post("http://192.168.150.93:5000/api/auth/logout");
+    await axios.post(`${API_BASE}/auth/logout`);
     ElMessage.success("已退出登录");
   } catch (err) {
     console.warn("退出通知后端失败:", err);

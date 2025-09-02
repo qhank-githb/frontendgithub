@@ -72,8 +72,6 @@ import http from "@/plugins/axios";
 import qs from "qs";
 import { ElMessage } from "element-plus";
 
-const apiBase = "http://192.168.150.93:5000/api";
-
 const allTags = ref([]);
 const selectedTags = ref([]);
 const files = ref([]);

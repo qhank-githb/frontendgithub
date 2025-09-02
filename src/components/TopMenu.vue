@@ -33,6 +33,7 @@
 import { ref } from "vue";
 import { ElMessage } from "element-plus";
 import axios from "axios";
+import { API_BASE } from "@/plugins/axios";
 
 const activeMenu = ref("upload");
 const emit = defineEmits(["menu-change", "logout"]);
@@ -45,7 +46,7 @@ const handleMenuSelect = (index) => {
 const handleLogout = async () => {
   delete axios.defaults.headers.common["Authorization"];
   try {
-    await axios.post("http://192.168.150.93:5000/api/auth/logout");
+    await axios.post(`${API_BASE}/api/auth/logout`);
     ElMessage.success("已退出登录");
   } catch (err) {
     console.warn("退出日志通知后端失败:", err);
