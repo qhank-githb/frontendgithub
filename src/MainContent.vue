@@ -54,16 +54,16 @@
 
 <script setup>
 import { ref, watch, onMounted } from "vue";
-import UploadArea from "./UploadArea.vue";
-import FileTable from "./FileTable.vue";
-import TagsPage from "./TagsPage.vue";
-import LoginForm from "./LoginForm.vue";
-import TopMenu from "./TopMenu.vue";
-import UpResultTable from "./UpResultTable.vue";
-import { fetchBuckets } from "../api/files";
 import { ElMessage } from "element-plus";
 import axios from "axios";
-import { login } from "../services/auth"; // 引入登录API
+import UploadArea from "@/components/UploadArea.vue";
+import FileTable from "@/components/FileTable.vue";
+import TagsPage from "@/components/TagsPage.vue";
+import LoginForm from "@/components/LoginForm.vue";
+import TopMenu from "@/components/TopMenu.vue";
+import UpResultTable from "@/components/UpResultTable.vue";
+import { fetchBuckets } from "@/api/files";
+import { login } from "@/services/auth";
 import http, { API_BASE } from "@/plugins/axios.js";
 
 // 登录相关状态
