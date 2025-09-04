@@ -11,62 +11,23 @@
         v-model:timeRange="timeRange"
         @fetch="fetchFileList"
       />
-
-      <el-row :gutter="10" style="margin-top: 10px">
-        <el-col :span="10" style="text-align: right">
-          <el-button type="primary" @click="SetAllSelection">
-            勾选全部 {{ totalCount }} 个
-          </el-button>
-          <el-button
-            type="warning"
-            @click="clearAllSelection"
-            :disabled="selectedIds.length === 0"
-          >
-            取消勾选
-          </el-button>
-          <el-button
-            type="success"
-            :disabled="selectedIds.length === 0"
-            @click="batchDownload"
-          >
-            批量下载 ({{ selectedIds.length }})
-          </el-button>
-        </el-col>
-      </el-row>
+      <FileActionButtons
+        :totalCount="totalCount"
+        :selectedIds="selectedIds"
+        @select-all="SetAllSelection"
+        @clear-selection="clearAllSelection"
+        @batch-download="batchDownload"
+      />
     </el-form>
 
     <!-- 文件表格 -->
-    <el-table
-      :data="files"
-      style="width: 100%"
-      ref="multipleTable"
-      :row-key="(row) => row.id"
+    <QueryTable
+      :files="files"
       @selection-change="onSelectionChange"
-      border
-    >
-      <el-table-column type="selection" width="55" />
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="originalFileName" label="文件名" />
-      <el-table-column prop="fileSize" label="文件大小" />
-      <el-table-column prop="uploader" label="上传者" />
-      <el-table-column prop="uploadTime" label="上传时间" />
-      <el-table-column label="操作" width="200">
-        <template #default="{ row }">
-          <el-button type="primary" size="small" @click="downloadById(row.id)"
-            >下载</el-button
-          >
-          <el-button
-            type="primary"
-            size="small"
-            @click="handlePreview(row.id, row.originalFileName)"
-            >预览</el-button
-          >
-          <el-button type="primary" size="small" @click="openEdit(row)"
-            >编辑</el-button
-          >
-        </template>
-      </el-table-column>
-    </el-table>
+      @download="downloadById"
+      @preview="handlePreview"
+      @edit="openEdit"
+    />
 
     <!-- 分页 -->
     <div class="demo-pagination-block">
@@ -130,6 +91,8 @@ import { useFileEdit } from "@/composables/useFileEdit";
 import { useTags } from "@/composables/useTags";
 import { useUniversalPreview } from "@/composables/useUniversalPreview";
 import { API_BASE } from "@/plugins/axios";
+import FileActionButtons from "@/components/FileActionButtons.vue";
+import QueryTable from "@/components/QueryTable.vue";
 
 // === props & emit ===
 const props = defineProps({
