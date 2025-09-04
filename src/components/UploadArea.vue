@@ -84,6 +84,7 @@ const emit = defineEmits([
   "upload-success",
   "upload-error",
   "update:modelValue",
+  "update:username",
 ]);
 
 const { selectedTags } = useTagSelector(props.modelValue, (val) =>

@@ -2,7 +2,7 @@
   <div style="display: flex; align-items: center; padding: 0 16px">
     <el-menu
       mode="horizontal"
-      :default-active="activeMenu"
+      :default-active="modelValue"
       @select="handleMenuSelect"
       background-color="transparent"
       text-color="#333333"
@@ -30,28 +30,20 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { ElMessage } from "element-plus";
-import axios from "axios";
-import { API_BASE } from "@/plugins/axios";
+import { defineProps, defineEmits } from "vue";
 
-const activeMenu = ref("upload");
-const emit = defineEmits(["menu-change", "logout"]);
+const props = defineProps({
+  modelValue: { type: String, default: "upload" },
+});
+
+const emit = defineEmits(["update:modelValue", "logout"]);
 
 const handleMenuSelect = (index) => {
-  activeMenu.value = index;
-  emit("menu-change", index);
+  emit("update:modelValue", index);
 };
 
-const handleLogout = async () => {
-  delete axios.defaults.headers.common["Authorization"];
-  try {
-    await axios.post(`${API_BASE}/api/auth/logout`);
-    ElMessage.success("已退出登录");
-  } catch (err) {
-    console.warn("退出日志通知后端失败:", err);
-  }
-  localStorage.removeItem("jwt_token");
+const handleLogout = () => {
+  // 只通知父组件去做真正的 logout（比如调用后端、清理 token）
   emit("logout");
 };
 </script>
