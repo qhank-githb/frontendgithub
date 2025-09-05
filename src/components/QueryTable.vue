@@ -38,8 +38,67 @@
 </template>
 
 <script setup>
-defineProps({
-  files: Array,
+import { ref, nextTick } from "vue";
+
+const props = defineProps({
+  files: { type: Array, default: () => [] },
 });
-defineEmits(["selection-change", "download", "preview", "edit"]);
+const emit = defineEmits(["selection-change", "download", "preview", "edit"]);
+
+// 获取 el-table 实例
+const multipleTable = ref(null);
+
+/**
+ * 清除当前表格的可视选择（调用 el-table 的 API）
+ */
+function clearSelection() {
+  try {
+    multipleTable.value?.clearSelection?.();
+  } catch (e) {
+    // 防御性处理，避免因实例不同而报错
+    console.warn("clearSelection failed:", e);
+  }
+}
+
+/**
+ * 在当前页恢复勾选
+ * @param {Array<string|number>} selectedIds - 已选 id 列表（字符串或数字）
+ */
+async function restoreSelection(selectedIds = []) {
+  if (!multipleTable.value) return;
+  try {
+    // 标准化：把 selectedIds 转为字符串集合，便于比较
+    const idSet = new Set((selectedIds || []).map((id) => String(id)));
+
+    // 清空当前视觉选择
+    multipleTable.value.clearSelection && multipleTable.value.clearSelection();
+    await nextTick();
+
+    // 在当前 files 中找到匹配 id 的行并勾上
+    (props.files || []).forEach((row) => {
+      const rid = String(row.id);
+      if (idSet.has(rid)) {
+        // toggleRowSelection 在 el-table 实例上存在（ElementPlus）
+        try {
+          multipleTable.value.toggleRowSelection &&
+            multipleTable.value.toggleRowSelection(row, true);
+        } catch (e) {
+          console.warn("toggleRowSelection failed for row", row, e);
+        }
+      }
+    });
+  } catch (err) {
+    console.error("restoreSelection error:", err);
+  }
+}
+
+// 将方法暴露给父组件（父组件通过 ref 调用）
+defineExpose({
+  clearSelection,
+  restoreSelection,
+});
 </script>
+
+<style scoped>
+/* 如果需要可在这里加入样式 */
+</style>

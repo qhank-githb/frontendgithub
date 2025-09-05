@@ -2,26 +2,37 @@
   <div>
     <!-- 查询表单 -->
     <el-form :inline="true" class="mb-3" label-width="70px" style="width: 100%">
-      <QueryArea
-        :queryLocal="queryLocal"
-        :allTags="allTags"
-        :queryLoading="queryLoading"
-        v-model:selectedTags="selectedTags"
-        v-model:tagMatchMode="tagMatchMode"
-        v-model:timeRange="timeRange"
-        @fetch="fetchFileList"
-      />
-      <FileActionButtons
-        :totalCount="totalCount"
-        :selectedIds="selectedIds"
-        @select-all="SetAllSelection"
-        @clear-selection="clearAllSelection"
-        @batch-download="batchDownload"
-      />
+      <div class="query-bar">
+        <div class="query-left">
+          <QueryArea
+            :queryLocal="queryLocal"
+            :allTags="allTags"
+            :queryLoading="queryLoading"
+            v-model:selectedTags="selectedTags"
+            v-model:timeRange="timeRange"
+            @fetch="fetchFileList"
+          />
+        </div>
+
+        <div class="query-right">
+          <FileActionButtons
+            :totalCount="totalCount"
+            :selectedIds="selectedIds"
+            :queryLoading="queryLoading"
+            v-model:tagMatchMode="tagMatchMode"
+            @fetch="fetchFileList"
+            @select-all="SetAllSelection"
+            @clear-selection="clearAllSelection"
+            @batch-download="batchDownload"
+          />
+        </div>
+      </div>
     </el-form>
 
     <!-- 文件表格 -->
+    <!-- 重要：把表格组件实例 ref 传给 multipleTable，以便 useFileSelection 使用 -->
     <QueryTable
+      ref="multipleTable"
       :files="files"
       @selection-change="onSelectionChange"
       @download="downloadById"
@@ -145,16 +156,24 @@ const {
 } = useFileQuery(queryLocal, timeRange, selectedTags, tagMatchMode);
 
 // === 选择 ===
+// multipleTable 是 QueryTable 组件的实例 ref（QueryTable 已有 defineExpose）
+// 传给 useFileSelection 以便它在需要时调用 multipleTable.value.clearSelection / toggleRowSelection 等
 const multipleTable = ref(null);
-const { selectedIds, onSelectionChange, SetAllSelection, clearAllSelection } =
-  useFileSelection(
-    files,
-    queryLocal,
-    timeRange,
-    selectedTags,
-    tagMatchMode,
-    multipleTable
-  );
+
+const {
+  selectedIds,
+  onSelectionChange,
+  SetAllSelection,
+  clearAllSelection,
+  // restoreSelection, getSelectedIds, etc. are available if needed
+} = useFileSelection(
+  files,
+  queryLocal,
+  timeRange,
+  selectedTags,
+  tagMatchMode,
+  multipleTable
+);
 
 // === 下载 ===
 const { downloadById, batchDownload } = useFileDownload(selectedIds);
@@ -172,6 +191,9 @@ defineExpose({ fetchFileList });
 </script>
 
 <style scoped>
+/* 如果 QueryArea 已经内部使用 el-row/el-col，不需要再强制一行显示 */
+/* 这里只是确保右侧按钮不换行 */
+
 .demo-pagination-block {
   display: flex;
   justify-content: center;
