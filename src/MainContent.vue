@@ -38,14 +38,14 @@
 
           <!-- 查询组件 -->
           <file-table
-            v-show="activeMenu === 'query'"
+            v-if="activeMenu === 'query'"
             ref="fileTableRef"
             :query="query"
             @update:query="(val) => (query = val)"
           />
 
           <!-- 标签管理组件 -->
-          <TagsPage v-show="activeMenu === 'tags'" ref="tagsPageRef" />
+          <TagsPage v-if="activeMenu === 'tags'" ref="tagsPageRef" />
         </el-main>
       </el-container>
     </div>
