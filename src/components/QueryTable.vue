@@ -10,9 +10,27 @@
     <el-table-column type="selection" width="55" />
     <el-table-column prop="id" label="ID" width="60" />
     <el-table-column prop="originalFileName" label="文件名" />
+    <el-table-column label="关联标签">
+      <template #default="{ row }">
+        <el-tag
+          v-for="tag in row.tags || []"
+          :key="tag"
+          type="info"
+          class="mr-1"
+        >
+          {{ tag }}
+        </el-tag>
+      </template>
+    </el-table-column>
+
     <el-table-column prop="fileSize" label="文件大小" />
     <el-table-column prop="uploader" label="上传者" />
-    <el-table-column prop="uploadTime" label="上传时间" />
+    <el-table-column label="上传时间">
+      <template #default="{ row }">
+        {{ dayjs(row.uploadTime).format("YYYY-MM-DD HH:mm:ss") }}
+      </template>
+    </el-table-column>
+
     <el-table-column label="操作" width="200">
       <template #default="{ row }">
         <el-button
@@ -39,6 +57,7 @@
 
 <script setup>
 import { ref, nextTick } from "vue";
+import dayjs from "dayjs";
 
 const props = defineProps({
   files: { type: Array, default: () => [] },
