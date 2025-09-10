@@ -46,6 +46,11 @@
 
           <!-- 标签管理组件 -->
           <TagsPage v-if="activeMenu === 'tags'" ref="tagsPageRef" />
+
+          <Register
+            v-if="activeMenu === 'register'"
+            @-register="handleRegister"
+          />
         </el-main>
       </el-container>
     </div>
@@ -61,10 +66,12 @@ import FileTable from "@/components/FileTable.vue";
 import TagsPage from "@/components/TagsPage.vue";
 import LoginForm from "@/components/LoginForm.vue";
 import TopMenu from "@/components/TopMenu.vue";
+import Register from "@/components/Register.vue";
 import UpResultTable from "@/components/UpResultTable.vue";
 import { fetchBuckets } from "@/api/files";
 import { login } from "@/services/auth";
 import http, { API_BASE } from "@/plugins/axios.js";
+import { register } from "@/services/auth";
 
 // 登录相关状态
 const JWTusername = ref("");
@@ -112,6 +119,20 @@ async function handleLogout() {
     JWTusername.value = "";
     JWTpassword.value = "";
     localStorage.removeItem("jwt_token");
+  }
+}
+
+async function handleRegister({
+  registerUsername,
+  registerPassword,
+  registerRole,
+}) {
+  try {
+    await register(registerUsername, registerPassword, registerRole);
+    ElMessage.success("注册成功");
+  } catch (err) {
+    console.warn("注册失败:", err);
+    ElMessage.error(err);
   }
 }
 

@@ -1,13 +1,5 @@
 <template>
   <el-form :inline="true" class="mb-3">
-    <el-form-item label="用户名">
-      <el-input
-        v-model="usernameLocal"
-        placeholder="请输入用户名"
-        style="width: 200px"
-      />
-    </el-form-item>
-
     <el-form-item label="选择已有标签">
       <el-select
         v-model="selectedTags"
@@ -68,15 +60,11 @@ import { API_BASE } from "@/plugins/axios";
 import { useUpload } from "@/composables/useUpload";
 import { handleCreateTag } from "@/composables/useTagCreate";
 import { useTagSelector } from "@/composables/useTagSelector";
+import { useJwt } from "@/composables/useJwt";
 
-const token = ref("");
-
-onMounted(() => {
-  token.value = localStorage.getItem("jwt_token") || "";
-});
+const { currentUsername, isTokenValid, token } = useJwt();
 
 const props = defineProps({
-  username: { type: String, default: "" },
   modelValue: { type: Array, default: () => [] },
 });
 
@@ -84,7 +72,6 @@ const emit = defineEmits([
   "upload-success",
   "upload-error",
   "update:modelValue",
-  "update:username",
 ]);
 
 const { selectedTags } = useTagSelector(props.modelValue, (val) =>
@@ -138,12 +125,6 @@ async function onTagCreate() {
   }
 }
 
-// 用户名双向绑定
-const usernameLocal = computed({
-  get: () => props.username,
-  set: (v) => emit("update:username", v),
-});
-
 // 上传地址固定 my-bucket
 // 上传地址
 const uploadAction = computed(
@@ -152,7 +133,7 @@ const uploadAction = computed(
 
 // 上传数据
 const uploadData = computed(() => ({
-  username: usernameLocal.value,
+  username: currentUsername.value, // 用JWT解析的用户名
   tags: JSON.stringify(selectedTags.value),
 }));
 
@@ -166,8 +147,9 @@ const {
 } = useUpload({ onFinishFetchBuckets: () => emit("upload-success") });
 
 function handleBeforeUpload(file, fileList) {
-  if (!usernameLocal.value) {
-    ElMessage.error("请先填写用户名");
+  if (!currentUsername.value) {
+    // 校验JWT解析的用户名
+    ElMessage.error("未获取到用户信息，请重新登录"); //  提示更准确
     return false;
   }
   return beforeUpload(file, fileList);

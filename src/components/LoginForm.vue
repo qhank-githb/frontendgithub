@@ -24,6 +24,7 @@
 <script setup>
 import { ref } from "vue";
 import { ElMessage } from "element-plus";
+import http, { API_BASE } from "@/plugins/axios.js";
 
 const emit = defineEmits(["login"]);
 

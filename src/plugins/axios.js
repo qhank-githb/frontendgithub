@@ -1,8 +1,8 @@
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
-const API_BASE = "http://192.168.150.93:5000/api";
-//const API_BASE = "http://localhost:5000/api";
+//const API_BASE = "http://192.168.150.93:5000/api";
+const API_BASE = "http://localhost:5000/api";
 
 const http = axios.create({
   baseURL: API_BASE,

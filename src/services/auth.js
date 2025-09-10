@@ -16,3 +16,17 @@ export async function login(username, password) {
     throw err;
   }
 }
+
+export async function register(username, password, role) {
+  try {
+    const res = await http.post("/auth/register", {
+      // 使用相对路径
+      username,
+      password,
+      role,
+    });
+  } catch (err) {
+    console.error("注册失败:", err.response?.data || err.message);
+    throw err;
+  }
+}
