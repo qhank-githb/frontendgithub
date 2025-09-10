@@ -5,7 +5,6 @@ import { API_BASE } from "@/plugins/axios";
 import { marked } from "marked"; // markdown 解析
 
 export function useUniversalPreview() {
-  // 移除硬编码baseUrl，使用API_BASE
   const dialogVisible = ref(false);
   const fileUrl = ref(null);
   const fileType = ref(null);
@@ -22,7 +21,10 @@ export function useUniversalPreview() {
   }
 
   function closeDialog() {
-    if (fileUrl.value) URL.revokeObjectURL(fileUrl.value);
+    if (fileUrl.value && typeof fileUrl.value === "string") {
+      // 只有 objectUrl 才需要 revoke
+      URL.revokeObjectURL(fileUrl.value);
+    }
     dialogVisible.value = false;
     fileUrl.value = null;
     fileType.value = null;
@@ -37,20 +39,32 @@ export function useUniversalPreview() {
 
     try {
       const isText = ["txt", "csv", "log", "md", "json"].includes(ext);
-      const res = await http.get("/file/preview-by-id", {
-        // 使用相对路径
-        params: { id },
-        responseType: isText ? "text" : "blob",
-      });
 
-      if (["txt", "csv", "log"].includes(ext)) {
-        textContent.value = res.data;
-      } else if (ext === "md") {
-        renderedMarkdown.value = marked(res.data);
-      } else if (ext === "json") {
-        formattedJson.value = JSON.stringify(JSON.parse(res.data), null, 2);
+      if (ext === "pptx") {
+        // ⚡ 针对 PPTX 用 ArrayBuffer
+        const res = await http.get("/file/preview-by-id", {
+          params: { id },
+          responseType: "arraybuffer",
+        });
+        console.log("pptx 文件大小:", res.data.byteLength); // ✅ 应该有字节数
+        fileUrl.value = res.data; // 直接传 ArrayBuffer 给 <vue-office-pptx>
+        console.log("预览 fileUrl 类型:", typeof res.data, res.data);
       } else {
-        fileUrl.value = URL.createObjectURL(res.data);
+        const res = await http.get("/file/preview-by-id", {
+          params: { id },
+          responseType: isText ? "text" : "blob",
+        });
+        console.log("预览 fileUrl 类型:", typeof res.data, res.data);
+
+        if (["txt", "csv", "log"].includes(ext)) {
+          textContent.value = res.data;
+        } else if (ext === "md") {
+          renderedMarkdown.value = marked(res.data);
+        } else if (ext === "json") {
+          formattedJson.value = JSON.stringify(JSON.parse(res.data), null, 2);
+        } else {
+          fileUrl.value = URL.createObjectURL(res.data);
+        }
       }
 
       dialogVisible.value = true;

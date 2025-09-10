@@ -51,6 +51,8 @@
             v-if="activeMenu === 'register'"
             @-register="handleRegister"
           />
+
+          <UserInfo v-if="activeMenu === 'userinfo'" />
         </el-main>
       </el-container>
     </div>
@@ -68,6 +70,7 @@ import LoginForm from "@/components/LoginForm.vue";
 import TopMenu from "@/components/TopMenu.vue";
 import Register from "@/components/Register.vue";
 import UpResultTable from "@/components/UpResultTable.vue";
+import UserInfo from "./components/UserInfo.vue";
 import { fetchBuckets } from "@/api/files";
 import { login } from "@/services/auth";
 import http, { API_BASE } from "@/plugins/axios.js";

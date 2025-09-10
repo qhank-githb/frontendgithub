@@ -74,11 +74,11 @@ import VueOfficePptx from "@vue-office/pptx";
 import VueOfficePdf from "@vue-office/pdf";
 import "@vue-office/docx/lib/index.css";
 import "@vue-office/excel/lib/index.css";
-import { computed } from "vue";
+import { computed, watch } from "vue";
 
 const props = defineProps({
   modelValue: Boolean, // 控制 dialog 显示
-  fileUrl: String,
+  fileUrl: [String, ArrayBuffer, Blob],
   fileType: String,
   textContent: String,
   renderedMarkdown: String,
@@ -96,5 +96,15 @@ const visible = computed({
 
 function onClose() {
   emit("update:modelValue", false);
+}
+watch(
+  () => props.fileUrl,
+  (val) => {
+    console.log("FilePreviewDialog 收到 fileUrl:", val);
+  }
+);
+
+function onError(e) {
+  console.error(e);
 }
 </script>

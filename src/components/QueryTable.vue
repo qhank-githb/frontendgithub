@@ -23,7 +23,11 @@
       </template>
     </el-table-column>
 
-    <el-table-column prop="fileSize" label="文件大小" />
+    <el-table-column
+      prop="fileSize"
+      label="文件大小"
+      :formatter="formatFileSize"
+    />
     <el-table-column prop="uploader" label="上传者" />
     <el-table-column label="上传时间">
       <template #default="{ row }">
@@ -66,6 +70,38 @@ const emit = defineEmits(["selection-change", "download", "preview", "edit"]);
 
 // 获取 el-table 实例
 const multipleTable = ref(null);
+
+/**
+ * 将纯数字字节数转换为带单位的格式
+ * @param {Object} row - 表格行数据
+ * @returns {string} 带单位的文件大小（如 "1.5 MB"、"200 KB"）
+ */
+const formatFileSize = (row) => {
+  // 获取纯数字字节数（确保是数字类型）
+  const bytes = Number(row.fileSize);
+
+  // 处理无效值
+  if (isNaN(bytes) || bytes < 0) {
+    return "0 B";
+  }
+
+  // 定义单位转换规则（字节 -> KB -> MB -> GB）
+  const units = ["B", "KB", "MB", "GB"];
+  let size = bytes;
+  let unitIndex = 0;
+
+  // 自动切换到最合适的单位（大于等于1024时进位）
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  // 保留1-2位小数（根据大小动态调整，避免显示过多小数位）
+  const decimalPlaces = size < 10 ? 2 : 1;
+
+  // 拼接数值和单位（如 "2.45 MB"、"100 KB"）
+  return `${size.toFixed(decimalPlaces)} ${units[unitIndex]}`;
+};
 
 /**
  * 清除当前表格的可视选择（调用 el-table 的 API）

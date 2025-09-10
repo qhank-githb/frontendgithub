@@ -35,6 +35,11 @@ export function useUpload({ onFinishFetchBuckets } = {}) {
   function beforeUpload(file, fileList) {
     if (!file) return false;
 
+    if (file.size === 0) {
+      ElMessage.error("不可上传空白文件"); // 明确提示“空白文件”
+      return false; // 允许空白文件上传
+    }
+
     // 简单校验
     if (file.size / 1024 / 1024 > 500) {
       ElMessage.error("文件大小不能超过 500MB");

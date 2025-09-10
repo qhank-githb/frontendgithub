@@ -26,9 +26,11 @@ export function useFileQuery(
       };
       if (queryLocal.id) params.id = Number(queryLocal.id);
       if (Array.isArray(timeRange.value) && timeRange.value.length === 2) {
-        params.start = new Date(timeRange.value[0]).toISOString();
-        params.end = new Date(timeRange.value[1]).toISOString();
+        // 直接传 yyyy-MM-dd HH:mm:ss 格式的本地时间
+        params.start = timeRange.value[0].toLocaleString("sv-SE");
+        params.end = timeRange.value[1].toLocaleString("sv-SE");
       }
+
       if (selectedTags.value.length > 0) {
         params.tags = [...selectedTags.value];
         params.matchAllTags = tagMatchMode.value === "all";
