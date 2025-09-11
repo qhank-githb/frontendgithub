@@ -32,28 +32,29 @@
     </el-col>
   </el-row>
 
-  <!-- 第二行： 标签（单独占一行） -->
-
-  <el-col :span="24" class="qa-col">
-    <el-form-item label="标签">
-      <el-select
-        v-model="selectedTagsLocal"
-        multiple
-        filterable
-        allow-create
-        placeholder="选择或输入标签"
-        style="width: 100%"
-        @change="updateSelectedTags(selectedTagsLocal)"
-      >
-        <el-option
-          v-for="tag in allTags"
-          :key="tag.id"
-          :label="tag.name"
-          :value="tag.name"
-        />
-      </el-select>
-    </el-form-item>
-  </el-col>
+  <el-aside
+    width="200px"
+    style="border-right: 1px solid #ebeef5; overflow-y: auto"
+  >
+    <el-card style="margin: 10px; padding: 10px">
+      <h4>标签列表</h4>
+      <el-scrollbar style="height: calc(100vh - 40px)">
+        <el-checkbox-group
+          v-model="selectedTagsLocal"
+          @change="updateSelectedTags(selectedTagsLocal)"
+        >
+          <el-checkbox
+            v-for="tag in allTags"
+            :key="tag.id"
+            :label="tag.id"
+            style="display: block; margin: 4px 0"
+          >
+            {{ tag.name }}
+          </el-checkbox>
+        </el-checkbox-group>
+      </el-scrollbar>
+    </el-card>
+  </el-aside>
 </template>
 
 <script setup>

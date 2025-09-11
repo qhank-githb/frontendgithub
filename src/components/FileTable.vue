@@ -3,7 +3,7 @@
     <!-- 查询表单 -->
     <el-form :inline="true" class="mb-3" label-width="70px" style="width: 100%">
       <div class="query-bar">
-        <div class="query-left">
+        <div class="query-left" style="flex: 1">
           <QueryArea
             :queryLocal="queryLocal"
             :allTags="allTags"
@@ -26,19 +26,18 @@
             @batch-download="batchDownload"
           />
         </div>
+        <!-- 文件表格 -->
+        <!-- 重要：把表格组件实例 ref 传给 multipleTable，以便 useFileSelection 使用 -->
+        <QueryTable
+          ref="multipleTable"
+          :files="files"
+          @selection-change="onSelectionChange"
+          @download="downloadById"
+          @preview="handlePreview"
+          @edit="openEdit"
+        />
       </div>
     </el-form>
-
-    <!-- 文件表格 -->
-    <!-- 重要：把表格组件实例 ref 传给 multipleTable，以便 useFileSelection 使用 -->
-    <QueryTable
-      ref="multipleTable"
-      :files="files"
-      @selection-change="onSelectionChange"
-      @download="downloadById"
-      @preview="handlePreview"
-      @edit="openEdit"
-    />
 
     <!-- 分页 -->
     <div class="demo-pagination-block">

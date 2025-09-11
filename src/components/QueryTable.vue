@@ -153,7 +153,3 @@ defineExpose({
   restoreSelection,
 });
 </script>
-
-<style scoped>
-/* 如果需要可在这里加入样式 */
-</style>
