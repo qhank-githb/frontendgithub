@@ -67,6 +67,7 @@
       v-model="dialogVisible"
       :fileUrl="fileUrl"
       :fileType="fileType"
+      :progress="{ downloadPercent, showProgress }"
       :textContent="textContent"
       :renderedMarkdown="renderedMarkdown"
       :formattedJson="formattedJson"
@@ -104,6 +105,9 @@ import { useUniversalPreview } from "@/composables/useUniversalPreview";
 import { API_BASE } from "@/plugins/axios";
 import FileActionButtons from "@/components/FileActionButtons.vue";
 import QueryTable from "@/components/QueryTable.vue";
+
+const downloadPercent = ref(0);
+const showProgress = ref(false);
 
 // === props & emit ===
 const props = defineProps({

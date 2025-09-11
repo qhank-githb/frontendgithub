@@ -1,5 +1,11 @@
 <template>
   <el-dialog v-model="visible" width="80%" :before-close="onClose">
+    <!-- 下载进度 -->
+    <div v-if="showProgress" style="margin-bottom: 10px">
+      <el-progress :percentage="downloadPercent" status="active" />
+      <div style="font-size: 14px; color: #409eff">{{ downloadPercent }}%</div>
+    </div>
+
     <!-- Office 文件 -->
     <vue-office-docx
       v-if="fileType === 'docx' && fileUrl"
@@ -50,7 +56,7 @@
 
     <!-- 文本 -->
     <pre
-      v-if="['txt', 'csv', 'log'].includes(fileType)"
+      v-if="['txt', 'csv', 'log'].includes(fileType) && fileUrl"
       style="white-space: pre-wrap"
     >
       {{ textContent }}
@@ -74,35 +80,33 @@ import VueOfficePptx from "@vue-office/pptx";
 import VueOfficePdf from "@vue-office/pdf";
 import "@vue-office/docx/lib/index.css";
 import "@vue-office/excel/lib/index.css";
-import { computed, watch } from "vue";
+import { computed } from "vue";
 
 const props = defineProps({
-  modelValue: Boolean, // 控制 dialog 显示
+  modelValue: Boolean,
   fileUrl: [String, ArrayBuffer, Blob],
   fileType: String,
   textContent: String,
   renderedMarkdown: String,
   formattedJson: String,
+  progress: Object, // ⚡ 响应式对象 { downloadPercent, showProgress }
   onRendered: Function,
   onError: Function,
 });
 
-const emit = defineEmits(["update:modelValue"]);
+const downloadPercent = computed(() => props.progress.downloadPercent.value);
+const showProgress = computed(() => props.progress.showProgress.value);
 
 const visible = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
 });
 
+const emit = defineEmits(["update:modelValue"]);
+
 function onClose() {
   emit("update:modelValue", false);
 }
-watch(
-  () => props.fileUrl,
-  (val) => {
-    console.log("FilePreviewDialog 收到 fileUrl:", val);
-  }
-);
 
 function onError(e) {
   console.error(e);

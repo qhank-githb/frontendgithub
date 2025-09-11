@@ -36,37 +36,28 @@ export function useUpload({ onFinishFetchBuckets } = {}) {
     if (!file) return false;
 
     if (file.size === 0) {
-      ElMessage.error("不可上传空白文件"); // 明确提示“空白文件”
-      return false; // 允许空白文件上传
+      ElMessage.error("不可上传空文件");
+      return false;
     }
-
-    // 简单校验
     if (file.size / 1024 / 1024 > 500) {
       ElMessage.error("文件大小不能超过 500MB");
       return false;
     }
 
-    // 初始化批次（支持一次性选多文件或逐个追加）
     if (!batchInProgress.value) {
       batchInProgress.value = true;
       batchCompletedCount.value = 0;
       fileUploadedBytes.value = {};
 
-      if (fileList && fileList.length > 1) {
-        batchTotalFiles.value = fileList.length;
-        batchTotalSize.value = fileList.reduce((s, f) => s + (f.size || 0), 0);
-        fileList.forEach((f) => (fileUploadedBytes.value[f.uid] = 0));
-      } else {
-        batchTotalFiles.value = 0;
-        batchTotalSize.value = 0;
-      }
+      // ✅ 确保单文件时也有正确的总数和总大小
+      batchTotalFiles.value = fileList?.length || 1;
+      batchTotalSize.value =
+        fileList?.reduce((s, f) => s + (f.size || 0), 0) || file.size || 0;
     }
 
-    // 保证当前文件被计入（避免重复）
-    if (!fileUploadedBytes.value[file.uid]) {
+    // 记录当前文件
+    if (!(file.uid in fileUploadedBytes.value)) {
       fileUploadedBytes.value[file.uid] = 0;
-      batchTotalFiles.value = (batchTotalFiles.value || 0) + 1;
-      batchTotalSize.value = (batchTotalSize.value || 0) + (file.size || 0);
     }
 
     uploadLoading.value = true;
@@ -75,12 +66,12 @@ export function useUpload({ onFinishFetchBuckets } = {}) {
     return true;
   }
 
-  function handleUploadProgress(event, file) {
-    if (!event || !event.lengthComputable) return;
+  function handleUploadProgress(event, file, fileList) {
+    if (!event) return;
     const uid = file.uid;
     fileUploadedBytes.value[uid] = Math.min(
       event.loaded,
-      file.size || event.loaded
+      event.total || file.size || event.loaded
     );
 
     const uploadedTotal = Object.values(fileUploadedBytes.value).reduce(
@@ -91,7 +82,7 @@ export function useUpload({ onFinishFetchBuckets } = {}) {
       batchTotalSize.value > 0
         ? (uploadedTotal / batchTotalSize.value) * 100
         : 0;
-    uploadPercent.value = percent >= 100 ? 99 : Math.floor(percent);
+    uploadPercent.value = Math.floor(percent);
   }
 
   function handleUploadSuccess(res, file) {

@@ -25,8 +25,16 @@
         @keyup.enter="onTagCreate"
       />
       <el-button type="primary" @click="onTagCreate" style="margin-left: 8px">
-        创建并加入
-      </el-button>
+        创建并加入 </el-button
+      ><el-progress
+        v-if="showProgress"
+        :percentage="uploadPercent"
+        status="active"
+        style="margin-left: 30px; width: 300px"
+      />
+      <div v-if="showProgress" style="font-size: 14px; color: #409eff">
+        {{ uploadPercent }}%
+      </div>
     </el-form-item>
 
     <el-form-item class="upload-form-item">
