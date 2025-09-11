@@ -63,11 +63,15 @@
     />
 
     <!-- 文件预览 -->
+    <!-- 正确代码 -->
     <FilePreview
       v-model="dialogVisible"
       :fileUrl="fileUrl"
       :fileType="fileType"
-      :progress="{ downloadPercent, showProgress }"
+      :progress="{
+        downloadPercent: downloadPercent,
+        showProgress: showProgress,
+      }"
       :textContent="textContent"
       :renderedMarkdown="renderedMarkdown"
       :formattedJson="formattedJson"
@@ -106,9 +110,6 @@ import { API_BASE } from "@/plugins/axios";
 import FileActionButtons from "@/components/FileActionButtons.vue";
 import QueryTable from "@/components/QueryTable.vue";
 
-const downloadPercent = ref(0);
-const showProgress = ref(false);
-
 // === props & emit ===
 const props = defineProps({
   query: {
@@ -133,11 +134,19 @@ const {
   textContent,
   renderedMarkdown,
   formattedJson,
+  downloadPercent, // 新增
+  showProgress, // 新增
   previewFileById,
   onRendered,
   onError,
 } = useUniversalPreview(API_BASE);
+
 function handlePreview(id, filename) {
+  console.log("触发文件预览", {
+    id,
+    filename,
+    currentFile: files.value.find((f) => f.id === id),
+  });
   previewFileById(id, filename);
 }
 

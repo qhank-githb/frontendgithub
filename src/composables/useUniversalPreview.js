@@ -1,166 +1,122 @@
-// src/composables/useUniversalPreview.js
 import { ref } from "vue";
 import http from "@/plugins/axios";
-import { marked } from "marked";
 
-/**
- * useUniversalPreview
- * - 支持下载进度（downloadPercent / showProgress）
- * - 支持文本/md/json、图片、视频、pdf、office(pptx/docx/xlsx)
- * - office 使用 ArrayBuffer（保留原来组件用法）
- */
-export function useUniversalPreview() {
+export function useUniversalPreview(API_BASE) {
   const dialogVisible = ref(false);
-  const fileUrl = ref(null); // string (objectURL) | ArrayBuffer | null
-  const fileType = ref(null);
+  const fileUrl = ref("");
+  const fileType = ref("");
   const textContent = ref("");
   const renderedMarkdown = ref("");
   const formattedJson = ref("");
   const downloadPercent = ref(0);
   const showProgress = ref(false);
 
-  function onRendered() {
-    console.log("文件渲染完成");
-  }
+  // 定义所有支持预览的文件类型
+  const supportedTypes = [
+    // 办公文件
+    "docx",
+    "pptx",
+    "xlsx",
+    "pdf",
+    // 图片
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "bmp",
+    "webp",
+    // 视频
+    "mp4",
+    "webm",
+    "ogg",
+    // 文本类
+    "txt",
+    "csv",
+    "log",
+    "md",
+    "json",
+  ];
 
-  function onError(e) {
-    console.error("文件渲染失败", e);
-  }
-
-  function closeDialog() {
-    // 释放可能的 objectUrl
-    if (fileUrl.value && typeof fileUrl.value === "string") {
-      try {
-        URL.revokeObjectURL(fileUrl.value);
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    dialogVisible.value = false;
-    fileUrl.value = null;
-    fileType.value = null;
-    textContent.value = "";
-    renderedMarkdown.value = "";
-    formattedJson.value = "";
-    downloadPercent.value = 0;
-    showProgress.value = false;
-  }
-
+  // 通用预览方法
   async function previewFileById(id, filename) {
+    // 提取文件扩展名
     const ext = (filename || "").split(".").pop().toLowerCase();
-    fileType.value = ext;
 
-    const supportedTypes = [
-      "txt",
-      "csv",
-      "log",
-      "md",
-      "json",
-      "pptx",
-      "docx",
-      "xlsx",
-      "pdf",
-      "jpg",
-      "jpeg",
-      "png",
-      "gif",
-      "bmp",
-      "webp",
-      "mp4",
-      "webm",
-      "ogg",
-    ];
-
+    // 先判断是否为支持的类型
     if (!supportedTypes.includes(ext)) {
-      fileType.value = "unknown";
-      dialogVisible.value = true;
-      return;
+      fileType.value = "unknown"; // 直接标记为未知类型
+      dialogVisible.value = true; // 显示对话框
+      showProgress.value = false; // 不显示进度条
+      return; // 终止后续流程
     }
 
-    // reset state
-    downloadPercent.value = 0;
+    // 支持的类型继续处理
+    fileType.value = ext;
+    dialogVisible.value = true;
     showProgress.value = true;
-    fileUrl.value = null;
-    textContent.value = "";
-    renderedMarkdown.value = "";
-    formattedJson.value = "";
+    downloadPercent.value = 0;
 
     try {
-      const isText = ["txt", "csv", "log", "md", "json"].includes(ext);
-      const isArrayBuffer = ["pptx", "docx", "xlsx"].includes(ext);
-      // decide axios responseType
-      const responseType = isArrayBuffer
-        ? "arraybuffer"
-        : isText
-        ? "text"
-        : "blob";
-
-      const res = await http.get("/file/preview-by-id", {
+      const res = await http.get(`${API_BASE}/file/preview-by-id`, {
         params: { id },
-        responseType,
+        responseType: "blob",
         onDownloadProgress: (ev) => {
-          // debug log - 在排查时非常有用
-          try {
-            console.log("[onDownloadProgress]", {
-              loaded: ev.loaded,
-              total: ev.total,
-              lengthComputable: ev.lengthComputable,
-            });
-          } catch (e) {
-            console.log("[onDownloadProgress] event not standard", e);
-          }
-
           if (ev && ev.lengthComputable) {
             downloadPercent.value = Math.floor((ev.loaded / ev.total) * 100);
           } else {
-            // fallback: 给用户可见的进度感（不精确）
-            // 以较小步长推进到 95%，真正完成后设 100%
-            downloadPercent.value = Math.min(95, downloadPercent.value + 6);
+            downloadPercent.value = Math.min(95, downloadPercent.value + 5);
           }
         },
       });
 
-      // handle response by type
-      if (isText) {
-        if (["txt", "csv", "log"].includes(ext)) {
-          textContent.value = res.data;
+      const blob = new Blob([res.data], {
+        type: getMimeType(ext),
+      });
+      fileUrl.value = URL.createObjectURL(blob);
+
+      // 处理文本类文件内容
+      if (["txt", "csv", "log", "md", "json"].includes(ext)) {
+        const text = await blob.text();
+        if (ext === "json") {
+          formattedJson.value = JSON.stringify(JSON.parse(text), null, 2);
         } else if (ext === "md") {
-          renderedMarkdown.value = marked(res.data);
-        } else if (ext === "json") {
-          try {
-            formattedJson.value = JSON.stringify(JSON.parse(res.data), null, 2);
-          } catch (e) {
-            // 如果解析失败，就直接显示原文
-            formattedJson.value = res.data;
-            console.warn("JSON 解析失败，显示原始内容", e);
-          }
-        }
-      } else {
-        if (isArrayBuffer) {
-          // some office viewer components expect ArrayBuffer
-          fileUrl.value = res.data;
+          renderedMarkdown.value = parseMarkdown(text); // 假设已有此方法
         } else {
-          // blob -> objectURL
-          const blob = res.data;
-          fileUrl.value = URL.createObjectURL(blob);
+          textContent.value = text;
         }
       }
-
-      // 打开对话框并确保进度显示 100%
-      downloadPercent.value = 100;
-      dialogVisible.value = true;
     } catch (err) {
-      console.error("加载文件失败", err);
-      // 保持对话框关闭并清理
-      closeDialog();
+      console.error("预览失败:", err);
+      fileType.value = "unknown"; // 错误时也标记为未知
     } finally {
-      // 给用户看到 100% 的短暂缓冲，然后隐藏进度指示
+      // 下载完成后延迟隐藏进度条
       setTimeout(() => {
         showProgress.value = false;
-        // 注意不要马上把 downloadPercent 清零，给模板短暂机会显示 100%
-        downloadPercent.value = 0;
-      }, 400);
+      }, 500);
     }
+  }
+
+  // MIME类型映射
+  function getMimeType(ext) {
+    const mimeMap = {
+      jpg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      mp4: "video/mp4",
+      webm: "video/webm",
+      ogg: "video/ogg",
+      txt: "text/plain",
+      csv: "text/csv",
+      log: "text/plain",
+      md: "text/markdown",
+      json: "application/json",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      pdf: "application/pdf",
+    };
+    return mimeMap[ext] || "application/octet-stream";
   }
 
   return {
@@ -173,8 +129,5 @@ export function useUniversalPreview() {
     downloadPercent,
     showProgress,
     previewFileById,
-    onRendered,
-    onError,
-    closeDialog,
   };
 }

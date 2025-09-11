@@ -2,7 +2,7 @@
   <el-dialog v-model="visible" width="80%" :before-close="onClose">
     <!-- 下载进度 -->
     <div v-if="showProgress" style="margin-bottom: 10px">
-      <el-progress :percentage="downloadPercent" status="active" />
+      <el-progress :percentage="downloadPercent" />
       <div style="font-size: 14px; color: #409eff">{{ downloadPercent }}%</div>
     </div>
 
@@ -11,29 +11,29 @@
       v-if="fileType === 'docx' && fileUrl"
       :src="fileUrl"
       style="height: 80vh; width: 100%"
-      @rendered="onRendered"
-      @error="onError"
+      @rendered="props.onRendered"
+      @error="props.onError"
     />
     <vue-office-pptx
       v-if="fileType === 'pptx' && fileUrl"
       :src="fileUrl"
       style="height: 80vh; width: 100%"
-      @rendered="onRendered"
-      @error="onError"
+      @rendered="props.onRendered"
+      @error="props.onError"
     />
     <vue-office-excel
       v-if="fileType === 'xlsx' && fileUrl"
       :src="fileUrl"
       style="height: 80vh; width: 100%"
-      @rendered="onRendered"
-      @error="onError"
+      @rendered="props.onRendered"
+      @error="props.onError"
     />
     <vue-office-pdf
       v-if="fileType === 'pdf' && fileUrl"
       :src="fileUrl"
       style="height: 80vh; width: 100%"
-      @rendered="onRendered"
-      @error="onError"
+      @rendered="props.onRendered"
+      @error="props.onError"
     />
 
     <!-- 图片 -->
@@ -80,7 +80,7 @@ import VueOfficePptx from "@vue-office/pptx";
 import VueOfficePdf from "@vue-office/pdf";
 import "@vue-office/docx/lib/index.css";
 import "@vue-office/excel/lib/index.css";
-import { computed } from "vue";
+import { computed, watch } from "vue";
 
 const props = defineProps({
   modelValue: Boolean,
@@ -89,13 +89,32 @@ const props = defineProps({
   textContent: String,
   renderedMarkdown: String,
   formattedJson: String,
-  progress: Object, // ⚡ 响应式对象 { downloadPercent, showProgress }
+  progress: {
+    type: Object,
+    default: () => ({
+      downloadPercent: ref(0),
+      showProgress: ref(false),
+    }),
+  },
   onRendered: Function,
   onError: Function,
 });
 
-const downloadPercent = computed(() => props.progress.downloadPercent.value);
-const showProgress = computed(() => props.progress.showProgress.value);
+// FilePreviewDialog.vue
+const downloadPercent = computed(() => props.progress.downloadPercent);
+const showProgress = computed(() => props.progress.showProgress);
+
+// 在 FilePreviewDialog.vue 中添加
+watch(
+  [downloadPercent, showProgress],
+  ([newPercent, newShow], [oldPercent, oldShow]) => {
+    console.log("进度条状态变化", {
+      showProgress: newShow,
+      downloadPercent: newPercent,
+    });
+  },
+  { immediate: true }
+);
 
 const visible = computed({
   get: () => props.modelValue,
