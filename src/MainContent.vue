@@ -44,9 +44,6 @@
             @update:query="(val) => (query = val)"
           />
 
-          <!-- 标签管理组件 -->
-          <TagsPage v-if="activeMenu === 'tags'" ref="tagsPageRef" />
-
           <Register
             v-if="activeMenu === 'register'"
             @-register="handleRegister"

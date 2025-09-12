@@ -11,10 +11,9 @@
     >
       <el-menu-item index="upload">上传文件</el-menu-item>
       <el-menu-item index="query">查询文件</el-menu-item>
-      <el-menu-item index="tags">标签管理</el-menu-item>
+      <el-menu-item index="logs">日志查询</el-menu-item>
       <el-menu-item index="register">用户注册</el-menu-item>
       <el-menu-item index="userinfo">当前用户信息</el-menu-item>
-      <el-menu-item index="logs">日志查询</el-menu-item>
     </el-menu>
 
     <el-button
