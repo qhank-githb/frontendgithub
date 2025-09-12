@@ -53,6 +53,8 @@
           />
 
           <UserInfo v-if="activeMenu === 'userinfo'" />
+
+          <LogQuery v-if="activeMenu === 'logs'" />
         </el-main>
       </el-container>
     </div>
@@ -71,6 +73,7 @@ import TopMenu from "@/components/TopMenu.vue";
 import Register from "@/components/Register.vue";
 import UpResultTable from "@/components/UpResultTable.vue";
 import UserInfo from "./components/UserInfo.vue";
+import LogQuery from "./components/LogQuery.vue";
 import { fetchBuckets } from "@/api/files";
 import { login } from "@/services/auth";
 import http, { API_BASE } from "@/plugins/axios.js";
