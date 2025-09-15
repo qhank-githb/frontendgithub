@@ -1,13 +1,8 @@
 // src/composables/useLogQuery.js
 import { ref } from "vue";
+import { useJwt } from "./useJwt";
+import { ElMessage } from "element-plus";
 
-/**
- * useLogQuery - 负责记住查询条件 / 分页 / 请求后端并返回 DTO 格式的日志数据
- * 返回：
- *  logs, currentPage, pageSize, totalCount, loading,
- *  level, messageKeyword, propertyFilters,
- *  fetchLogs, resetPageAndFetch, setPage
- */
 export function useLogQuery() {
   const logs = ref([]);
   const currentPage = ref(1);
@@ -15,13 +10,23 @@ export function useLogQuery() {
   const totalCount = ref(0);
   const loading = ref(false);
 
-  // 查询条件（绑定在 UI）
+  // 查询条件
   const level = ref("");
   const messageKeyword = ref("");
-  // propertyFilters 是一个对象：{ key: value, ... }
   const propertyFilters = ref({});
 
+  // 引入 JWT 解析结果（全局共享）
+  const { currentRole } = useJwt();
+
   async function fetchLogs() {
+    // 检查权限：普通 User 不允许查询
+    if (currentRole.value === "User") {
+      ElMessage.warning("普通用户不可查询日志");
+      logs.value = [];
+      totalCount.value = 0;
+      return;
+    }
+
     loading.value = true;
     try {
       const params = new URLSearchParams();
@@ -29,7 +34,6 @@ export function useLogQuery() {
       if (messageKeyword.value)
         params.append("MessageKeyword", messageKeyword.value);
 
-      // 动态属性过滤：PropertyFilters[Key]=Value
       for (const key in propertyFilters.value) {
         const v = propertyFilters.value[key];
         if (v !== undefined && v !== null && String(v).trim() !== "") {
@@ -46,11 +50,11 @@ export function useLogQuery() {
         method: "GET",
         headers: {
           Accept: "application/json",
+          Authorization: `Bearer ${localStorage.getItem("jwt_token") ?? ""}`,
         },
       });
 
       if (!res.ok) {
-        // 尽量把后端错误文本打印出来，便于调试
         const text = await res.text();
         console.error("[useLogQuery] 请求错误：", res.status, text);
         logs.value = [];
@@ -59,10 +63,8 @@ export function useLogQuery() {
       }
 
       const data = await res.json();
-      // 期望后端返回 LogQueryResponse: { totalCount, totalPages, currentPage, logs: LogItemDto[] }
       logs.value = data.logs ?? [];
       totalCount.value = data.totalCount ?? 0;
-      // 如果有 totalPages，也可以用于 UI，但我们以 totalCount/pageSize 计算为主
     } catch (err) {
       console.error("日志查询失败:", err);
       logs.value = [];
