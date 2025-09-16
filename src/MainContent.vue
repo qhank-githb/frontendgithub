@@ -64,7 +64,6 @@ import { ElMessage } from "element-plus";
 import axios from "axios";
 import UploadArea from "@/components/UploadArea.vue";
 import FileTable from "@/components/FileTable.vue";
-import TagsPage from "@/components/TagsPage.vue";
 import LoginForm from "@/components/LoginForm.vue";
 import TopMenu from "@/components/TopMenu.vue";
 import Register from "@/components/Register.vue";
