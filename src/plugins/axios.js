@@ -1,6 +1,7 @@
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
+//切换后端地址在此更改
 const API_BASE = "http://192.168.150.93:5000/api";
 //const API_BASE = "http://localhost:5000/api";
 

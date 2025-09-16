@@ -20,7 +20,7 @@ export function useLogQuery() {
 
   async function fetchLogs() {
     // 检查权限：普通 User 不允许查询
-    if (currentRole.value != "Admin") {
+    if (currentRole.value !== "Admin") {
       ElMessage.warning("普通用户不可查询日志");
       logs.value = [];
       totalCount.value = 0;

@@ -1,9 +1,7 @@
-// src/composables/useJwt.js
 import { ref, onMounted } from "vue";
 import { jwtDecode } from "jwt-decode";
 import { ElMessage } from "element-plus";
 
-// ---- 全局单例响应式变量 ----
 const token = ref("");
 const currentUsername = ref("");
 const currentRole = ref("");
@@ -14,13 +12,14 @@ function parseToken() {
     token.value = localStorage.getItem("jwt_token") || "";
     if (!token.value) {
       isTokenValid.value = false;
+      currentUsername.value = "";
+      currentRole.value = "";
       return;
     }
 
-    const decodedToken = jwtDecode(token.value);
+    const decodedToken = jwtDecode(token.value); // ⚡命名导出
     const currentTime = Date.now() / 1000;
 
-    // 检查过期
     if (decodedToken.exp && decodedToken.exp < currentTime) {
       token.value = "";
       currentUsername.value = "";
@@ -31,7 +30,6 @@ function parseToken() {
       return;
     }
 
-    // 提取用户名和角色
     const usernameField =
       "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name";
     const roleField =
@@ -50,14 +48,6 @@ function parseToken() {
 }
 
 export function useJwt() {
-  // 组件挂载时自动解析一次
   onMounted(parseToken);
-
-  return {
-    token,
-    currentUsername,
-    currentRole,
-    isTokenValid,
-    parseToken,
-  };
+  return { token, currentUsername, currentRole, isTokenValid, parseToken };
 }

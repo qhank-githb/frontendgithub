@@ -41,6 +41,9 @@
 <script setup>
 import { ref } from "vue";
 import { ElMessage } from "element-plus";
+import { useJwt } from "@/composables/useJwt.js";
+
+const { currentRole } = useJwt();
 
 const emit = defineEmits(["register"]);
 
@@ -54,7 +57,11 @@ function handleRegister() {
   const password = RegisterPassword.value.trim();
   const role = RegisterRole.value.trim();
 
-  // 2. 逐一判断字段，为空则提示并返回（阻止提交）
+  // 2. 逐一判断字段
+  if (currentRole.value !== "Admin") {
+    ElMessage.warning("普通用户不可注册");
+    return;
+  }
   if (!username) {
     ElMessage.warning("请输入注册的用户名");
     return; // 终止函数，不执行后续 emit
