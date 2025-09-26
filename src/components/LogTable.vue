@@ -19,23 +19,6 @@
 
       <el-table-column prop="message" label="消息" show-overflow-tooltip />
 
-      <!-- 异常列：预览 + tooltip 查看完整 -->
-      <el-table-column prop="exception" label="异常" width="240">
-        <template #default="{ row }">
-          <div v-if="row.exception">
-            <el-tooltip
-              v-if="isLong(row.exception)"
-              :content="row.exception"
-              placement="top-start"
-            >
-              <span class="ellipsis">{{ row.exception.slice(0, 80) }}...</span>
-            </el-tooltip>
-            <span v-else>{{ row.exception }}</span>
-          </div>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
-
       <!-- 属性列：展示预览，tooltip 显示 JSON -->
       <el-table-column prop="properties" label="属性">
         <template #default="{ row }">
